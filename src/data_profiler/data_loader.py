@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Dict, Optional, Callable, Type
 from loguru import logger
 from data_profiler import DataLoaderError, UnsupportedFileTypeError, FileType, InvalidConfigurationError
 from pandas.errors import ParserError
@@ -30,36 +30,32 @@ class DataLoader:
             raise FileNotFoundError(f"El archivo {config.file_path} no existe.")
         self.config = config
         
+        #? Repasar este diccionario
+        self._loaders: Dict[Type[LoadConfig], Callable[[], pd.DataFrame]] = {
+            CsvLoadConfig: self._load_csv,
+            ExcelLoadConfig: self._load_excel,
+            LoadConfig: self._load_simple,
+        }
+        
     def load(self) -> pd.DataFrame:
         logger.info(f"iniciando la carga de datos desde {self.config.file_path}")
         
-        try:
-            file_type = FileType.from_extension(self.config.file_path.suffix)
-            logger.info(f"Tipo de archivo detectado: {file_type.name}")
-            if file_type in [FileType.CSV, FileType.TXT]:
-                if not isinstance(self.config, CsvLoadConfig):
-                    raise TypeError("Se esperaba una configuración de tipo CsvLoadConfig para archivos CSV/TXT.")
-                return self._load_csv()
-            elif file_type == FileType.EXCEL:
-                if not isinstance(self.config, ExcelLoadConfig):
-                    raise TypeError("Se esperaba una configuración de tipo ExcelLoadConfig para archivos Excel.")
-                return self._load_excel()
-            elif file_type == FileType.JSON:
-                if not isinstance(self.config, LoadConfig):
-                    raise TypeError("Se esperaba una configuración de tipo LoadConfig para archivos JSON.")
-                return self._load_json()
-            elif file_type == FileType.PARQUET:
-                if not isinstance(self.config, LoadConfig):
-                    raise TypeError("Se esperaba una configuración de tipo LoadConfig para archivos Parquet.")
-                return self._load_parquet()
-
-        except UnsupportedFileTypeError as e:
-            raise UnsupportedFileTypeError(e)
+        for config_type, loader in self._loaders.items():
+            if isinstance(self.config, config_type):
+                return loader()
+            
+        raise UnsupportedFileTypeError(f"No hay un cargador definido para la configuración: {type(self.config).__name__}")
 
     def _load_csv(self) -> pd.DataFrame:
+        
+        assert isinstance(self.config, CsvLoadConfig)
+        
         logger.info(f"Leyendo CSV con separador '{self.config.separator}' desde {self.config.file_path}")
         try:
-            return pd.read_csv(self.config.file_path, delimiter=self.config.separator, encoding=self.config.encoding)
+            return pd.read_csv(self.config.file_path, 
+                               delimiter=self.config.separator, 
+                               encoding=self.config.encoding
+                               )
         except UnicodeDecodeError as e:
             raise InvalidConfigurationError(
                 f"No se pudo decodificar el archivo con '{self.config.encoding}'. Intenta con 'latin-1' o 'cp1252'."
@@ -68,6 +64,8 @@ class DataLoader:
             raise InvalidConfigurationError(f"Error al parsear el archivo CSV con el separador recibido: {e}") from e
 
     def _load_excel(self) -> pd.DataFrame:
+        assert isinstance(self.config, ExcelLoadConfig)
+        
         if self.config.sheet_name:
             logger.info(f"Leyendo la hoja '{self.config.sheet_name}' desde {self.config.file_path}")
             try:
@@ -80,16 +78,23 @@ class DataLoader:
         all_sheets_df = [pd.read_excel(xls, sheet_name=sheet) for sheet in xls.sheet_names]
         
         return pd.concat(all_sheets_df, ignore_index=True)
-    
-    def _load_json(self) -> pd.DataFrame:
-        logger.info(f"Leyendo JSON desde {self.config.file_path}")
-        return pd.read_json(self.config.file_path)
-    
-    def _load_parquet(self) -> pd.DataFrame:
-        logger.info(f"Leyendo Parquet desde {self.config.file_path}")
-        return pd.read_parquet(self.config.file_path)
-    
-    
+
+    def _load_simple(self) -> pd.DataFrame:
+        """Carga archivos que no requieren parametros extra, como JSON o Parquet."""
+        file_type = FileType.from_extension(self.config.file_path.suffix)
+        
+        simple_loaders = {
+            FileType.JSON: pd.read_json,
+            FileType.PARQUET: pd.read_parquet,
+        }
+        
+        reader = simple_loaders.get(file_type)
+        
+        if reader:
+            logger.info(f"Leyendo {file_type.name} desde {self.config.file_path}")
+            return reader(self.config.file_path)
+        
+        raise UnsupportedFileTypeError(f"No hay un cargador definido para el tipo de archivo: {file_type.name}")  
     
 def main_interactive():
     """
