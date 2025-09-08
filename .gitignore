@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Ignorar archivos log
+*.log
+
+# Ignorar archivos de prueba
+file_tests
