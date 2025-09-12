@@ -1,5 +1,5 @@
 from .Enums import FileType
-from .Models import LoadConfig, CsvLoadConfig, ExcelLoadConfig, TypeDetectorConfig
+from .Models import LoadConfig, CsvLoadConfig, ExcelLoadConfig, TypeDetectorConfig, Settings
 
 __all__ = [
     "FileType",
@@ -7,4 +7,5 @@ __all__ = [
     "CsvLoadConfig",
     "ExcelLoadConfig",
     "TypeDetectorConfig",
+    "Settings"
 ]

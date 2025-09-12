@@ -1,0 +1,31 @@
+text_keywords:
+  - "documento"
+  - "identificacion"
+  - "identificación"
+  - "codigo"
+  - "código"
+  - "cod"
+  - "cód"
+  - "dane"
+  - "ciudad"
+  - "nombre"
+  - "número de autorización"
+  - "año"
+  - "mes"
+  - "anio"
+  - "aut"
+  - "cum"
+  - "num_afiliado"
+
+float_keywords:
+  - "costo"
+  - "total"
+  - "valor"
+  - "vr"
+  - "tope"
+
+date_formats:
+  - "%Y-%m-%d"
+  - "%d/%m/%Y"
+  - "%d-%m-%Y"
+  - "%Y/%m/%d"

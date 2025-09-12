@@ -1,48 +1,70 @@
-from pathlib import Path
 from typing import Optional
-from dataclasses import dataclass, field
-from venv import logger
-
+from pydantic import BaseModel, Field, FilePath
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import yaml
+from loguru import logger
+from dataclasses import dataclass
 
+# 1. Mantenemos los modelos de configuración, pero ahora con Pydantic
+#    Son muy similares a los dataclasses, pero con más poder.
 
-@dataclass(frozen=True)
-class LoadConfig:
-    """Configuracion base que solo contiene la ruta del archivo."""
+class LoadConfig(BaseModel):
+    """Configuración base que solo contiene la ruta del archivo."""
+    file_path: FilePath # Pydantic valida que el archivo exista
 
-    file_path: Path
-
-
-@dataclass(frozen=True)
 class CsvLoadConfig(LoadConfig):
-    """Configuracion para cargar archivos CSV."""
-
+    """Configuración para cargar archivos CSV."""
     separator: str = ","
     encoding: str = "utf-8"
 
-
-@dataclass(frozen=True)
 class ExcelLoadConfig(LoadConfig):
-    """Configuracion para cargar archivos Excel."""
-
+    """Configuración para cargar archivos Excel."""
     sheet_name: Optional[str] = None
 
 
+# 2. Reemplazamos el dataclass TypeDetectorConfig con un BaseModel de Pydantic
+
 @dataclass(frozen=True)
-class TypeDetectorConfig:
+class TypeDetectorConfig(BaseModel):
     """Configuracion para detectar tipos de datos."""
-
-    keyword_config_path: Path
-
-    # Parametros para la deteccion de categoria
+    
+    keyword_config_path: FilePath
     cardinality_threshold: float = 0.05
     unique_count_limit: int = 100
+    keywords: dict = {}
 
-    # Carga de palabras clave una sola vez al inicializar
-    keywords: dict = field(init=False)
+    # Pydantic puede cargar y validar datos de forma más elegante
+    @classmethod
+    def from_yaml(cls, config_path: str):
+        """Crea una instancia de TypeDetectorConfig desde un archivo YAML."""
+        logger.info(f"Cargando palabras clave desde {config_path}")
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                keywords_data = yaml.safe_load(f)
+            return cls(keyword_config_path=config_path, keywords=keywords_data, cardinality_threshold=0.05, unique_count_limit=100)
+        except FileNotFoundError:
+            logger.error(f"Archivo de configuración no encontrado: {config_path}")
+            return cls(keyword_config_path=config_path, keywords={})
+        except yaml.YAMLError as e:
+            logger.error(f"Error al parsear YAML: {e}")
+            return cls(keyword_config_path=config_path, keywords={})
 
-    def __post_init__(self):
-        logger.info(f"Cargando palabras clave desde {self.keyword_config_path}")
-        # ? Aqui entraria una excepcion si el archivo no existe o no es valido?
-        with open(self.keyword_config_path, "r", encoding="utf-8") as f:
-            self.keywords = yaml.safe_load(f)
+
+# 3. (La gran mejora) Creamos una clase para gestionar TODAS las variables de entorno.
+
+class Settings(BaseSettings):
+    """
+    Gestiona la configuración de la aplicación a través de variables de entorno.
+    Pydantic leerá automáticamente las variables con estos nombres.
+    """
+    # Para cargar el archivo de datos
+    data_file_path: FilePath
+    data_separator: str = Field(",", description="Separador para archivos CSV/TXT")
+    data_encoding: str = Field("utf-8", description="Codificación para archivos CSV/TXT")
+    data_sheet_name: Optional[str] = Field(None, description="Nombre de la hoja para archivos Excel")
+
+    # Para el TypeDetector
+    keyword_config_path: FilePath = Field(..., description="Ruta al archivo YAML de palabras clave")
+    
+    # Configuración para que Pydantic lea desde un archivo .env (opcional, pero útil para desarrollo)
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')

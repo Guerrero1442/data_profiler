@@ -14,3 +14,6 @@ wheels/
 
 # Ignorar archivos de prueba
 file_tests
+
+# Ignorar variables de entorno
+.env
