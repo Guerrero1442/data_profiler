@@ -17,3 +17,6 @@ file_tests
 
 # Ignorar variables de entorno
 .env
+
+# ignorar settings.json
+.vscode/settings.json
