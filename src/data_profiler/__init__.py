@@ -20,12 +20,14 @@ from .context import (
 # Finalmente importamos las clases principales
 from .data_loader import DataLoader
 from .type_detector import TypeDetector
+from .schema_generator import SchemaGenerator
 
 __all__ = [
     # Core
     "DataLoader",
     "TypeDetector",
-    # Context    
+    "SchemaGenerator",
+    # Contexto
     "FileType",
     "LoadConfig",
     "CsvLoadConfig",
