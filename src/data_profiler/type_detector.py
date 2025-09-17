@@ -14,10 +14,15 @@ class TypeDetector:
         self._identify_empty_columns()
         self._convert_forced_text_columns()
         self._convert_numeric_columns()
+        self._convert_float_columns_to_int()
         self._convert_date_columns()
         self._convert_categorical_columns()
         self._convert_object_columns_to_string()
         logger.info("Deteccion de tipos y categorias completada.")
+        
+        # visualizar tipos
+        logger.debug(f"Tipos de datos finales:\n{self.df.dtypes}")
+        
         return self.df
 
     def _identify_empty_columns(self):
@@ -26,9 +31,9 @@ class TypeDetector:
         if empty_cols:
             logger.warning(f"Columnas vacias detectadas: {empty_cols}")
             for col in empty_cols:
-                self.df[col] = pd.Series(dtype="string")
+                self.df[col] = pd.Series(dtype="string[pyarrow]")
 
-            logger.success(f"Columnas vacias convertidas a tipo 'string': {empty_cols}")
+            logger.success(f"Columnas vacias convertidas a tipo 'string[pyarrow]': {empty_cols}")
 
     def _is_forced_text(self, col_name: str) -> bool:
         return any(
@@ -47,12 +52,12 @@ class TypeDetector:
         for col in self.df.columns:
             if self._is_forced_text(col):
                 logger.success(f"Columna '{col}' forzada a 'string' por palabra clave.")
-                self.df[col] = self.df[col].astype("string")
+                self.df[col] = self.df[col].astype("string[pyarrow]")
 
     def _infer_decimal_separator(self, series: pd.Series) -> str:
         sample = series.dropna().astype(str).head(1000)
         comma = sample.str.contains(",").sum()
-        dot = sample.str.contains("\.").sum()
+        dot = sample.str.contains(r"\.").sum()
         return "," if comma > dot else "."
 
     def _convert_numeric_columns(self):
@@ -64,7 +69,7 @@ class TypeDetector:
                 if decimal_sep == ",":
                     self.df[col] = (
                         self.df[col]
-                        .str.replace(",", ".", regex=False)
+                        .str.replace(".", "", regex=False)
                         .str.replace(",", ".", regex=False)
                     )
                     self.df[col] = pd.to_numeric(self.df[col], errors="raise")
@@ -73,53 +78,70 @@ class TypeDetector:
                         f"Columna '{col}' convertida a 'float' con separador decimal ','"
                     )
                 else:
+                    self.df[col] = self.df[col].str.replace(",", "", regex=False)
                     self.df[col] = pd.to_numeric(self.df[col], errors="raise")
                     self.df[col] = self.df[col].round(2)
                     logger.success(
                         f"Columna '{col}' convertida a 'float' con separador decimal '.'"
                     )
                 
-                # si todos los valores tienen decimal .00 o .0 convertir a int
-                if (self.df[col] % 1 == 0).all():
-                    self.df[col] = self.df[col].astype("Int64")
-                    logger.success(f"Columna '{col}' convertida a 'Int64'")
-                
-                
             except (ValueError, TypeError) as e:
                 logger.debug(
                     f"Columna '{col}' no pudo ser convertida a 'float'. Se mantiene como 'object'.: {e}"
                 )
                 continue
+            
+    def _convert_float_columns_to_int(self):
+        logger.info("Convirtiendo columnas de tipo 'float' a 'Int64' cuando sea posible (no tengan decimales).")
+        for col in self.df.select_dtypes(include=["float64"]).columns:
+            logger.debug(f"Revisando columna '{col}' para posible conversion a 'Int64'.")
+            if ((self.df[col] % 1 == 0.0 )| (self.df[col].isnull())).all():
+                self.df[col] = self.df[col].astype("Int64")
+                logger.success(f"Columna '{col}' convertida a 'Int64'.")
+            else:
+                logger.debug(f"Columna '{col}' tiene decimales. No se convierte a 'Int64'.")
 
     def _convert_date_columns(self):
         logger.info("Iniciando conversion de columnas de fecha.")
         for col in self.df.select_dtypes(include=["object"]).columns:
-            if (
+            # Condición para identificar columnas que podrían ser fechas
+            is_date_like = (
                 self.df[col].str.contains(r"[/-]", na=False).any()
                 or "fecha" in col.lower()
                 or "date" in col.lower()
-            ):
-                for date_format in self.config.keywords.get("date_formats", []):
-                    try:
-                        self.df[col] = self.df[col].str.slice(
-                            0, 10
-                        )  # Limitar a los primeros 10 caracteres
-                        self.df[col] = self.df[col].loc[
-                            not self.df[col].str.contains("0001", na=False)
-                        ]
-                        self.df[col] = pd.to_datetime(
-                            self.df[col], format=date_format, errors="raise"
-                        )
-                        logger.success(
-                            f"Columna '{col}' convertida a 'datetime' con formato '{date_format}'"
-                        )
-                        break  # Si la conversion fue exitosa, salir del loop
-                    except (ValueError, TypeError) as e:
-                        logger.debug(
-                            f"Columna '{col}' no pudo ser convertida a 'datetime' con formato '{date_format}': {e}"
-                        )
-                        continue
+            )
 
+            if is_date_like:
+                original_col = self.df[col].copy() 
+                try:
+                    temp_series = self.df[col].str.slice(0, 10)
+                    mask_invalid = temp_series.str.contains("0001", na=False)
+                    temp_series.loc[mask_invalid] = pd.NaT
+
+                    # 2. Intentamos que pandas infiera el formato automáticamente.
+                    #    Esto es muy potente y a menudo resuelve formatos mixtos.
+                    converted_series = pd.to_datetime(temp_series, errors='coerce')
+
+                    if converted_series.notna().sum() >= (original_col.notna().sum() / 2):
+                        self.df[col] = converted_series
+                        logger.success(
+                            f"Columna '{col}' convertida a 'datetime' (formato inferido)."
+                        )
+                    else:
+                        # Si la inferencia no fue exitosa, volvemos a la columna original y no hacemos nada.
+                        self.df[col] = original_col
+                        logger.debug(
+                            f"La inferencia de fecha para '{col}' no fue concluyente. Se mantiene como object."
+                        )
+
+                except Exception as e:
+                    # Si CUALQUIER cosa falla, restauramos la columna y seguimos.
+                    self.df[col] = original_col
+                    logger.debug(
+                        f"Columna '{col}' no pudo ser convertida a 'datetime' por un error inesperado: {e}"
+                    )
+                
+                
     def _convert_categorical_columns(self):
         logger.info("Iniciando conversion de columnas categoricas.")
         for col in self.df.select_dtypes(include=["object", "string"]).columns:
@@ -127,8 +149,8 @@ class TypeDetector:
             total_count = len(self.df[col])
             cardinality = num_unique / total_count if total_count > 0 else 0
             if (
-                cardinality < self.config.cardinality_threshold
-                and num_unique < self.config.unique_count_limit
+                cardinality < self.config.cardinality_threshold 
+                and num_unique <= self.config.unique_count_limit
                 and num_unique > 0
             ):
                 if self._has_mixed_types(self.df[col]):
@@ -136,16 +158,23 @@ class TypeDetector:
                         f"Columna '{col}' tiene tipos mixtos. No se convertira a 'category'."
                     )
                 else:
+                    logger.debug(
+                        f"Columna '{col}' cumple con umbral de cardinalidad ({cardinality:.4f} < {self.config.cardinality_threshold}) y unicos ({num_unique} <= {self.config.unique_count_limit})."
+                    )
                     self.df[col] = self.df[col].astype("category")
                     logger.success(
                         f"Columna '{col}' convertida a 'category' (Cardinalidad: {cardinality:.4f}, Unicos: {num_unique})"
                     )
+            else:
+                logger.debug(
+                    f"Columna '{col}' no cumple con umbral de cardinalidad ({cardinality:.4f} >= {self.config.cardinality_threshold}) o unicos ({num_unique} > {self.config.unique_count_limit})."
+                )
 
     def _convert_object_columns_to_string(self):
-        logger.info("Convirtiendo columnas de tipo 'object' a 'string'.")
+        logger.info("Convirtiendo columnas de tipo 'object' a 'string[pyarrow]'.")
         for col in self.df.select_dtypes(include=["object"]).columns:
-            self.df[col] = self.df[col].astype("string")
-            logger.success(f"Columna '{col}' convertida a 'string'.")
+            self.df[col] = self.df[col].astype("string[pyarrow]")
+            logger.success(f"Columna '{col}' convertida a 'string[pyarrow]'.")
             
     def _has_mixed_types(self, series: pd.Series) -> bool:
         """Detecta si una serie tiene tipos mixtos (números y strings)."""
