@@ -7,7 +7,8 @@ from data_profiler import (
     CsvLoadConfig, 
     ExcelLoadConfig, 
     LoadConfig, 
-    DataLoader  
+    DataLoader,
+    SchemaGenerator
 )
 from pydantic import ValidationError
 
@@ -54,9 +55,20 @@ def main():
 
     logger.info("Tipos y categorias detectados en el flujo interactivo.")
     print(df_optimizado.dtypes)
+    
+    df_optimizado.to_csv("data_optimizado.csv", index=False)
 
-    # exportarlo a parquet para verificar
-    df_optimizado.to_parquet("datos_optimizado.parquet")
+    # Schema generation
+    schema_gen = SchemaGenerator(df_optimizado)
+    
+    # Generar y guardar archivo Excel
+    schema_gen.to_excel("schema.xlsx")
+    logger.info("Esquema exportado a schema.xlsx")
 
+    # Generar y mostrar DDL para Oracle
+    ddl = schema_gen.to_oracle_ddl("nt_unicos")
+    logger.info("DDL generado para Oracle:")
+    print(ddl)
+    
 if __name__ == "__main__":
     main()
