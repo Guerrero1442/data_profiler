@@ -12,5 +12,6 @@ dependencies = [
     "pyarrow>=21.0.0",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
+    "pytest>=8.4.2",
     "pyyaml>=6.0.2",
 ]
