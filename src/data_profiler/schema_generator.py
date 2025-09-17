@@ -85,7 +85,7 @@ class SchemaGenerator:
             return f"NUMBER({precision}, 2)"
         elif pd.api.types.is_datetime64_any_dtype(dtype):
             return "DATE"
-        elif pd.api.types.is_categorical_dtype(dtype) or pd.api.types.is_string_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
+        elif isinstance(self.df[column].dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
             max_len = self.df[column].astype(str).str.len().max()
             # Si todos los valores tienen la misma longitud, se puede usar CHAR
             if (self.df[column].str.len() == max_len).all():
@@ -105,7 +105,7 @@ class SchemaGenerator:
         Analiza los patrones de una columna para obtener valores permitidos o estadísticas.
         """
         dtype = self.df[column].dtype
-        if pd.api.types.is_categorical_dtype(dtype):
+        if isinstance(self.df[column].dtype, pd.CategoricalDtype):
             return self.df[column].cat.categories.tolist()
         elif pd.api.types.is_numeric_dtype(dtype):
             stats = self.df[column].describe()
