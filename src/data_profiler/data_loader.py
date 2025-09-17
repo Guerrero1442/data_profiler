@@ -1,7 +1,5 @@
-import sys
 import pandas as pd
-from pathlib import Path
-from typing import Dict, Optional, Callable, Type
+from typing import Dict, Callable, Type
 from loguru import logger
 from pandas.errors import ParserError
 
@@ -46,11 +44,19 @@ class DataLoader:
             f"Leyendo CSV con separador '{self.config.separator}' desde {self.config.file_path}"
         )
         try:
-            return pd.read_csv(
+            csv_df = pd.read_csv(
                 self.config.file_path,
                 delimiter=self.config.separator,
                 encoding=self.config.encoding,
+                engine="pyarrow",
+                dtype_backend="pyarrow"
             )
+            
+            if csv_df.shape[1] <= 1:
+                raise InvalidConfigurationError(
+                    "El archivo CSV parece tener un solo campo. Verifica el separador."
+                )
+            return csv_df     
         except UnicodeDecodeError as e:
             raise InvalidConfigurationError(
                 f"No se pudo decodificar el archivo con '{self.config.encoding}'. Intenta con 'latin-1' o 'cp1252'."
