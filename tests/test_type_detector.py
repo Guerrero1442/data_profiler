@@ -193,9 +193,28 @@ def test_date_conversion_strips_time_information(detector_config: TypeDetectorCo
 
     # Assert
     assert pd.api.types.is_datetime64_any_dtype(result_df["ultimo_acceso"])
-    # Verificamos que el primer elemento es la fecha correcta, sin la hora
-    assert result_df["ultimo_acceso"][0] == pd.Timestamp("2024-01-15")
+    # Verificamos que el primer elemento es la fecha correcta, con la hora
+    assert result_df["ultimo_acceso"][0] == pd.Timestamp("2024-01-15 10:30:00")
     
+# test si las horas son solo 00:00:00 no tomarlo como Timestamp sino como fecha
+def test_date_conversion_ignores_midnight_time(detector_config: TypeDetectorConfig):
+    """
+    Verifica que si la hora es siempre '00:00:00', la columna se trate
+    como fecha sin hora (date) y no como timestamp.
+    """
+    # Arrange
+    data = {"fecha_nacimiento": ["2024-01-15 00:00:00", "2024-03-20 00:00:00"]}
+    df = pd.DataFrame(data, dtype="object")
+    detector = TypeDetector(df, detector_config)
+
+    # Act
+    result_df = detector.run_detection()
+
+    # Assert
+    assert pd.api.types.is_datetime64_any_dtype(result_df["fecha_nacimiento"])
+    # Verificamos que el primer elemento es la fecha correcta, sin la hora
+    assert result_df["fecha_nacimiento"][0] == pd.Timestamp("2024-01-15")
+
 def test_date_conversion_with_null_values(detector_config: TypeDetectorConfig):
     """
     Verifica que los valores nulos (None, np.nan) en una columna de fechas

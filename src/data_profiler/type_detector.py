@@ -114,15 +114,18 @@ class TypeDetector:
             if is_date_like:
                 original_col = self.df[col].copy() 
                 try:
-                    temp_series = self.df[col].str.slice(0, 10)
-                    mask_invalid = temp_series.str.contains("0001", na=False)
-                    temp_series.loc[mask_invalid] = pd.NaT
+                    mask_invalid = original_col.str.contains("0001", na=False)
+                    original_col.loc[mask_invalid] = pd.NaT
 
                     # 2. Intentamos que pandas infiera el formato automáticamente.
                     #    Esto es muy potente y a menudo resuelve formatos mixtos.
-                    converted_series = pd.to_datetime(temp_series, errors='coerce')
+                    converted_series = pd.to_datetime(original_col, errors='coerce')
 
                     if converted_series.notna().sum() >= (original_col.notna().sum() / 2):
+                        # Verificar si todas las horas son medianoche
+                        if self._all_times_are_midnight(converted_series):
+                            converted_series = converted_series.dt.normalize()
+        
                         self.df[col] = converted_series
                         logger.success(
                             f"Columna '{col}' convertida a 'datetime' (formato inferido)."
@@ -141,7 +144,28 @@ class TypeDetector:
                         f"Columna '{col}' no pudo ser convertida a 'datetime' por un error inesperado: {e}"
                     )
                 
+    def _all_times_are_midnight(self, datetime_series: pd.Series) -> bool:
+        """
+        Verifica si todos los valores no nulos de una serie datetime tienen hora 00:00:00
+        """
+        if datetime_series.empty:
+            return False
+        
+        # Filtrar valores no nulos
+        valid_dates = datetime_series.dropna()
+        
+        if len(valid_dates) == 0:
+            return False
+        
+        # Verificar si todas las horas son 00:00:00
+        all_midnight = all(
+            dt.hour == 0 and dt.minute == 0 and dt.second == 0 
+            for dt in valid_dates
+        )
+        
+        return all_midnight
                 
+                     
     def _convert_categorical_columns(self):
         logger.info("Iniciando conversion de columnas categoricas.")
         for col in self.df.select_dtypes(include=["object", "string"]).columns:
