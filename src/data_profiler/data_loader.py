@@ -14,11 +14,8 @@ from data_profiler import (
 
 class DataLoader:
     def __init__(self, config: LoadConfig):
-        if not config.file_path.exists():
-            raise FileNotFoundError(f"El archivo {config.file_path} no existe.")
         self.config = config
 
-        # ? Repasar este diccionario
         self._loaders: Dict[Type[LoadConfig], Callable[[], pd.DataFrame]] = {
             CsvLoadConfig: self._load_csv,
             ExcelLoadConfig: self._load_excel,
@@ -38,8 +35,7 @@ class DataLoader:
         )
 
     def _load_csv(self) -> pd.DataFrame:
-        assert isinstance(self.config, CsvLoadConfig) #! evitar assert 
-
+        
         logger.info(
             f"Leyendo CSV con separador '{self.config.separator}' desde {self.config.file_path}"
         )
@@ -67,7 +63,6 @@ class DataLoader:
             ) from e
 
     def _load_excel(self) -> pd.DataFrame:
-        assert isinstance(self.config, ExcelLoadConfig)
         
         if self.config.sheet_name:
             logger.info(
