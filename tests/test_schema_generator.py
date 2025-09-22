@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from data_profiler import SchemaGenerator
+from data_profiler import SchemaGenerator, OracleDialect
 
 # 1. Fixture para crear un DataFrame optimizado de prueba
 #    Este DataFrame simula la salida del TypeDetector.
@@ -18,19 +18,25 @@ def optimized_dataframe() -> pd.DataFrame:
         "descripcion_larga": pd.Series([
             "producto A", "producto B con extra", "producto C", np.nan, "producto D"
         ], dtype="string"),
-        "codigo_fijo": pd.Series(["AB123", "CD456", "EF789", "GH012", "IJ345"], dtype="string")
+        "codigo_fijo": pd.Series(["AB123", "CD456", "EF789", "GH012", "IJ345"], dtype="string"),
+        "valores_nulos": pd.Series([np.nan, np.nan, np.nan, np.nan, np.nan], dtype="string"),
+        "cadenas_vacias": pd.Series(["", "", "", "", ""], dtype="string"),
     }
     return pd.DataFrame(data)
 
-# 2. Pruebas para SchemaGenerator
+@pytest.fixture
+def dialecto_oracle() -> OracleDialect:
+    """Proporciona una instancia del dialecto Oracle."""
+    return OracleDialect()
 
-def test_generate_schema_dict_correctly_identifies_types(optimized_dataframe: pd.DataFrame):
+# 2. Pruebas para SchemaGenerator
+def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_dataframe: pd.DataFrame, dialecto_oracle: OracleDialect):
     """
     Verifica que el diccionario generado contenga los tipos de Oracle,
     longitudes y obligatoriedad correctos para cada columna.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle)
 
     # Act
     schema = schema_gen.generate_schema_dict()
@@ -40,46 +46,60 @@ def test_generate_schema_dict_correctly_identifies_types(optimized_dataframe: pd
     assert "id_usuario" in schema
     
     # Verificamos los tipos de datos inferidos para Oracle
-    assert schema["id_usuario"]["Tipo"] == "NUMBER(1)"
-    assert schema["monto_compra"]["Tipo"] == "NUMBER(6, 2)" # 4 enteros + 2 decimales
-    assert schema["fecha_registro"]["Tipo"] == "DATE"
-    assert schema["pais"]["Tipo"] == "CHAR(2)"
-    assert schema["descripcion_larga"]["Tipo"] == "VARCHAR2(20)"
-    assert schema["codigo_fijo"]["Tipo"] == "CHAR(5)" # Como todos tienen la misma longitud, debería ser CHAR
+    assert schema["id_usuario"]["tipo"] == "NUMBER(1)"
+    assert schema["monto_compra"]["tipo"] == "NUMBER(6, 2)" # 4 enteros + 2 decimales
+    assert schema["fecha_registro"]["tipo"] == "DATE"
+    assert schema["pais"]["tipo"] == "CHAR(2)"
+    assert schema["descripcion_larga"]["tipo"] == "VARCHAR2(20)"
+    assert schema["codigo_fijo"]["tipo"] == "CHAR(5)" # Como todos tienen la misma longitud, debería ser CHAR
+    assert schema["valores_nulos"]["tipo"] == "VARCHAR2(1)" # Columna con solo nulos
+    assert schema["cadenas_vacias"]["tipo"] == "VARCHAR2(1)" # Columna con solo cadenas vacías
     
     # Verificamos la obligatoriedad
     assert schema["id_usuario"]["obligatoria"] == "Obligatorio"
     assert schema["descripcion_larga"]["obligatoria"] == "No Obligatorio"
 
-def test_to_oracle_ddl_generates_correct_statement(optimized_dataframe: pd.DataFrame):
+def test_to_ddl_file_creates_correct_oracle_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect):
     """
-    Verifica que la sentencia DDL CREATE TABLE para Oracle se genere
-    con la sintaxis y los tipos de datos correctos.
+    Verifica que el método to_ddl_file cree un archivo DDL con la sintaxis
+    y los tipos de datos correctos para Oracle.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle)
     table_name = "CLIENTES_PROCESADOS"
+    output_path = tmp_path / "schema_ddl.sql"
 
     # Act
-    ddl = schema_gen.to_oracle_ddl(table_name)
+    schema_gen.to_ddl_file(table_name, output_path)
 
     # Assert
-    # Verificamos que contenga las partes clave de una sentencia DDL
-    assert ddl.startswith(f"CREATE TABLE {table_name} (")
-    assert '"id_usuario" NUMBER(1),' in ddl
-    assert '"monto_compra" NUMBER(6, 2),' in ddl
-    assert '"fecha_registro" DATE,' in ddl
-    assert '"pais" CHAR(2),' in ddl
-    assert '"descripcion_larga" VARCHAR2(20),' in ddl
-    assert '"codigo_fijo" CHAR(5)' in ddl # El último no debe tener coma
-    assert ddl.endswith(");")
+    # Verificar que el archivo se creó
+    assert output_path.exists()
+    assert output_path.is_file()
+    
+    # Leer el contenido del archivo
+    with open(output_path, 'r', encoding='utf-8') as f:
+        ddl_content = f.read()
+    
+    # Verificar el contenido del DDL
+    assert f"CREATE TABLE {table_name} (" in ddl_content
+    assert '"id_usuario" NUMBER(1)' in ddl_content
+    assert '"monto_compra" NUMBER(6, 2)' in ddl_content
+    assert '"fecha_registro" DATE' in ddl_content
+    assert '"pais" CHAR(2)' in ddl_content
+    assert '"descripcion_larga" VARCHAR2(20)' in ddl_content
+    assert '"codigo_fijo" CHAR(5)' in ddl_content
+    assert ddl_content.strip().endswith(");")
+    
+    # Verificar que contiene comentario
+    assert f"-- Esquema generado para la tabla {table_name}" in ddl_content
 
-def test_to_excel_creates_file(optimized_dataframe: pd.DataFrame, tmp_path: Path):
+def test_to_excel_creates_file(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect):
     """
     Verifica que el método to_excel cree un archivo en la ruta especificada.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle)
     output_path = tmp_path / "schema_test.xlsx"
 
     # Act
@@ -91,5 +111,5 @@ def test_to_excel_creates_file(optimized_dataframe: pd.DataFrame, tmp_path: Path
     
     # Prueba adicional (opcional pero recomendada): leer el archivo y verificar su contenido
     df_from_excel = pd.read_excel(output_path, index_col=0)
-    assert "Tipo" in df_from_excel.columns
-    assert df_from_excel.loc["id_usuario"]["Tipo"] == "NUMBER(1)"
+    assert "tipo" in df_from_excel.columns
+    assert df_from_excel.loc["id_usuario"]["tipo"] == "NUMBER(1)"

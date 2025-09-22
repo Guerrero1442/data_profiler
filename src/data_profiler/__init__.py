@@ -20,6 +20,7 @@ from .context import (
 # Finalmente importamos las clases principales
 from .data_loader import DataLoader
 from .type_detector import TypeDetector
+from .dialects import Dialect, OracleDialect
 from .schema_generator import SchemaGenerator
 
 __all__ = [
@@ -34,6 +35,9 @@ __all__ = [
     "ExcelLoadConfig",
     "TypeDetectorConfig",
     "Settings",
+    # Dialectos
+    "Dialect",
+    "OracleDialect",
     # Excepciones
     "DataLoaderError",
     "UnsupportedFileTypeError",

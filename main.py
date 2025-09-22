@@ -8,7 +8,8 @@ from data_profiler import (
     ExcelLoadConfig, 
     LoadConfig, 
     DataLoader,
-    SchemaGenerator
+    SchemaGenerator,
+    OracleDialect
 )
 from pydantic import ValidationError
 
@@ -54,21 +55,28 @@ def main():
     df_optimizado = detector.run_detection()
 
     logger.info("Tipos y categorias detectados en el flujo interactivo.")
-    print(df_optimizado.dtypes)
+    print(df_optimizado.dtypes) 
     
     df_optimizado.to_csv("data_optimizado.csv", index=False)
 
+    # eliminar saltos de lineas de los nombres de columnas
+    df_optimizado.columns = df_optimizado.columns.str.replace('\n', ' ').str.strip()
+
+    dialecto_oracle = OracleDialect()
+
     # Schema generation
-    schema_gen = SchemaGenerator(df_optimizado)
-    
+    schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_oracle)
+
     # Generar y guardar archivo Excel
     schema_gen.to_excel("schema.xlsx")
     logger.info("Esquema exportado a schema.xlsx")
 
+    # Generar y guardar DDL para Oracle en un archivo .sql
+    table_name = "nt_unicos"
+    output_sql_path = "schema.sql"
+
     # Generar y mostrar DDL para Oracle
-    ddl = schema_gen.to_oracle_ddl("nt_unicos")
-    logger.info("DDL generado para Oracle:")
-    print(ddl)
+    schema_gen.to_ddl_file(table_name, output_sql_path)
     
 if __name__ == "__main__":
     main()
