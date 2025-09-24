@@ -1,4 +1,5 @@
 import pandas as pd
+import pyarrow as pa
 from loguru import logger
 from .base import ConversionStep
 
@@ -26,32 +27,42 @@ class DateConversionStep(ConversionStep):
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Iniciando conversion de columnas de fecha.")
-        for col in df.select_dtypes(include=["object"]).columns:
+        for col in df.select_dtypes(include=["object", "datetime64[ns]"]).columns:
             # Condición para identificar columnas que podrían ser fechas
-            is_date_like = (
-                df[col].str.contains(r"[/-]", na=False).any()
-                or "fecha" in col.lower()
-                or "date" in col.lower()
-            )
+            if pd.api.types.is_string_dtype(df[col].dtype):
+                is_date_like = (
+                    df[col].str.contains(r"[/-]", na=False).any()
+                    or "fecha" in col.lower()
+                    or "date" in col.lower()
+                )
 
-            if is_date_like:
+            if is_date_like or pd.api.types.is_datetime64_ns_dtype(df[col].dtype):
                 original_col = df[col].copy()
                 try:
-                    mask_invalid = original_col.str.contains("0001", na=False)
-                    original_col.loc[mask_invalid] = pd.NaT
+                    if df[col].dtype == "object":
+                        mask_invalid = original_col.str.contains("0001", na=False)
+                        original_col.loc[mask_invalid] = pd.NaT
 
-                    # 2. Intentamos que pandas infiera el formato automáticamente.
-                    #    Esto es muy potente y a menudo resuelve formatos mixtos.
-                    converted_series = pd.to_datetime(original_col, errors="coerce")
+                        # 2. Intentamos que pandas infiera el formato automáticamente.
+                        #    Esto es muy potente y a menudo resuelve formatos mixtos.
+                        converted_series = pd.to_datetime(original_col, errors="coerce")
+                    else:
+                        converted_series = original_col
 
                     if converted_series.notna().sum() >= (
                         original_col.notna().sum() / 2
                     ):
                         # Verificar si todas las horas son medianoche
                         if self._all_times_are_midnight(converted_series):
-                            converted_series = converted_series.dt.normalize()
-
-                        df[col] = converted_series
+                            pandas_date_arrow_type = pd.ArrowDtype(pa.date32())
+                            df[col] = converted_series.astype(pandas_date_arrow_type)
+                        else:
+                            pandas_timestamp_arrow_type = pd.ArrowDtype(
+                                pa.timestamp("s")
+                            )
+                            df[col] = converted_series.astype(
+                                pandas_timestamp_arrow_type
+                            )
                         logger.success(
                             f"Columna '{col}' convertida a 'datetime' (formato inferido)."
                         )

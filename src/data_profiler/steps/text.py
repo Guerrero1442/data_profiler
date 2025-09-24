@@ -1,4 +1,5 @@
 import pandas as pd
+import pyarrow as pa
 from loguru import logger
 from .base import ConversionStep
 
@@ -16,7 +17,7 @@ class ForcedTextConversionStep(ConversionStep):
             if self._is_forced_text(col):
                 logger.success(f"Columna '{col}' forzada a 'string' por palabra clave.")
                 df[col] = df[col].astype("string[pyarrow]")
-
+                
         return df
 
 
@@ -27,8 +28,7 @@ class EmptyColumnsToStringStep(ConversionStep):
         if empty_cols:
             logger.warning(f"Columnas vacias detectadas: {empty_cols}")
             for col in empty_cols:
-                df[col] = pd.Series(dtype="string[pyarrow]")
-
+                df[col] = df[col].astype("string[pyarrow]")
             logger.success(
                 f"Columnas vacias convertidas a tipo 'string[pyarrow]': {empty_cols}"
             )

@@ -1,4 +1,5 @@
 import pandas as pd
+import pyarrow as pa
 from .base import Dialect
 from loguru import logger
 
@@ -20,19 +21,21 @@ class OracleDialect(Dialect):
             return "VARCHAR2(1)"
         
         if pd.api.types.is_integer_dtype(dtype):
-            max_len = series.astype(str).str.len().max()
+            max_len = series.astype(str).str.len().max() 
             return f"NUMBER({max_len})"
         elif pd.api.types.is_float_dtype(dtype):
             precision = self._get_numeric_precision(series)
             return f"NUMBER({precision}, 2)"
-        elif pd.api.types.is_datetime64_any_dtype(dtype):
-            return "DATE"
-        elif isinstance(series.dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(dtype):
+        elif isinstance(dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(dtype):
             max_len = series.astype(str).str.len().max()
             if (series.str.len() == max_len).all():
                  return f"CHAR({int(max_len)})"
             else:
                 return f"VARCHAR2({int(max_len)})"
+        elif pa.types.is_date(dtype.pyarrow_dtype):
+            return "DATE"
+        elif pa.types.is_timestamp(dtype.pyarrow_dtype):
+            return "TIMESTAMP"
         else:
             logger.warning(f"No se pudo determinar el tipo de {series.name}. Usando VARCHAR2(255) por defecto.")
             return "VARCHAR2(255)"

@@ -1,4 +1,5 @@
 import pandas as pd
+import pyarrow as pa
 from loguru import logger
 from .base import ConversionStep
 
@@ -49,7 +50,7 @@ class CategoricalConversionStep(ConversionStep):
                     logger.debug(
                         f"Columna '{col}' cumple con umbral de cardinalidad ({cardinality:.4f} < {self.config.cardinality_threshold}) y unicos ({num_unique} <= {self.config.unique_count_limit})."
                     )
-                    df[col] = df[col].astype("category")
+                    df[col] = df[col].astype('category')
                     logger.success(
                         f"Columna '{col}' convertida a 'category' (Cardinalidad: {cardinality:.4f}, Unicos: {num_unique})"
                     )

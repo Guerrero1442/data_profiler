@@ -1,6 +1,7 @@
 # tests/test_schema_generator.py
 import pytest
 import pandas as pd
+import pyarrow as pa
 import numpy as np
 from pathlib import Path
 from data_profiler import SchemaGenerator, OracleDialect
@@ -14,6 +15,10 @@ def optimized_dataframe() -> pd.DataFrame:
         "id_usuario": pd.Series([1, 2, 3, 4, 5], dtype="Int64"),
         "monto_compra": pd.Series([199.99, 1500.50, 45.00, 2500.75, 999.00], dtype="float64"),
         "fecha_registro": pd.to_datetime(["2024-01-10", "2024-02-15", "2024-03-20", "2024-04-25", "2024-05-30"]),
+        "fecha_ultima_compra": pd.to_datetime([
+            "2024-06-01 14:30:00", "2024-06-15 09:15:00", "2024-07-20 18:45:00",
+            "2024-08-05 12:00:00", "2024-09-10 16:20:00"
+        ]),
         "pais": pd.Series(["CO", "MX", "CO", "PE", "MX"], dtype="category"),
         "descripcion_larga": pd.Series([
             "producto A", "producto B con extra", "producto C", np.nan, "producto D"
@@ -22,6 +27,11 @@ def optimized_dataframe() -> pd.DataFrame:
         "valores_nulos": pd.Series([np.nan, np.nan, np.nan, np.nan, np.nan], dtype="string"),
         "cadenas_vacias": pd.Series(["", "", "", "", ""], dtype="string"),
     }
+    
+    # convertir a pyarrow
+    data["fecha_registro"] = data["fecha_registro"].astype(pd.ArrowDtype(pa.date32()))
+    data["fecha_ultima_compra"] = data["fecha_ultima_compra"].astype(pd.ArrowDtype(pa.timestamp("s")))
+    
     return pd.DataFrame(data)
 
 @pytest.fixture
@@ -49,6 +59,7 @@ def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_datafr
     assert schema["id_usuario"]["tipo"] == "NUMBER(1)"
     assert schema["monto_compra"]["tipo"] == "NUMBER(6, 2)" # 4 enteros + 2 decimales
     assert schema["fecha_registro"]["tipo"] == "DATE"
+    assert schema["fecha_ultima_compra"]["tipo"] == "TIMESTAMP"
     assert schema["pais"]["tipo"] == "CHAR(2)"
     assert schema["descripcion_larga"]["tipo"] == "VARCHAR2(20)"
     assert schema["codigo_fijo"]["tipo"] == "CHAR(5)" # Como todos tienen la misma longitud, debería ser CHAR
