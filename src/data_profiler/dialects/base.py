@@ -21,6 +21,7 @@ class Dialect(ABC):
         """
         pass
 
+    @abstractmethod
     def generate_ddl(self, table_name: str, schema: Dict[str, Dict[str, Any]]) -> str:
         """
         Genera la sentencia DDL CREATE TABLE completa.
@@ -32,15 +33,4 @@ class Dialect(ABC):
         Returns:
             Un string con la sentencia DDL completa.
         """
-        columns_definitions = []
-
-        for column, metadata in schema.items():
-            columns_definitions.append(f'    "{column}" {metadata["tipo"]}')
-
-        columns_str = ",\n".join(columns_definitions)
-
-        return f"""-- Esquema generado para la tabla {table_name}
-CREATE TABLE {table_name} (
-        {columns_str}
-    );
-    """
+        pass

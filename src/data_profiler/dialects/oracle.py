@@ -2,6 +2,8 @@ import pandas as pd
 import pyarrow as pa
 from .base import Dialect
 from loguru import logger
+from typing import Dict, Any
+
 
 class OracleDialect(Dialect):
     
@@ -39,3 +41,17 @@ class OracleDialect(Dialect):
         else:
             logger.warning(f"No se pudo determinar el tipo de {series.name}. Usando VARCHAR2(255) por defecto.")
             return "VARCHAR2(255)"
+        
+    def generate_ddl(self, table_name: str, schema: Dict[str, Dict[str, Any]]) -> str:
+        columns_definitions = []
+
+        for column, metadata in schema.items():
+            columns_definitions.append(f'    "{column}" {metadata["tipo"]}')
+
+        columns_str = ",\n".join(columns_definitions)
+
+        return f"""-- Esquema generado para la tabla {table_name}
+CREATE TABLE {table_name} (
+        {columns_str}
+    );
+    """

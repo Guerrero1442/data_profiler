@@ -66,5 +66,9 @@ class Settings(BaseSettings):
     # Para el TypeDetector
     keyword_config_path: FilePath = Field(..., description="Ruta al archivo YAML de palabras clave")
     
+    # Para BigQuery
+    bigquery_project_id: Optional[str] = Field(None, description="ID del proyecto de BigQuery")
+    bigquery_dataset_id: Optional[str] = Field(None, description="ID del dataset de BigQuery")
+    
     # Configuración para que Pydantic lea desde un archivo .env (opcional, pero útil para desarrollo)
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')

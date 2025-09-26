@@ -9,7 +9,8 @@ from data_profiler import (
     LoadConfig, 
     DataLoader,
     SchemaGenerator,
-    OracleDialect
+    OracleDialect,
+    BigQueryDialect
 )
 from pydantic import ValidationError
 
@@ -62,10 +63,13 @@ def main():
     # eliminar saltos de lineas de los nombres de columnas
     df_optimizado.columns = df_optimizado.columns.str.replace('\n', ' ').str.strip()
 
-    dialecto_oracle = OracleDialect()
+    dialecto_bigquery = BigQueryDialect(
+        project_id=settings.bigquery_project_id,
+        dataset_id=settings.bigquery_dataset_id
+    )
 
     # Schema generation
-    schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_oracle)
+    schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_bigquery)
 
     # Generar y guardar archivo Excel
     schema_gen.to_excel("schema.xlsx")
