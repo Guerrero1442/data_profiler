@@ -28,6 +28,8 @@ class DateConversionStep(ConversionStep):
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Iniciando conversion de columnas de fecha.")
         for col in df.select_dtypes(include=["object", "datetime64[ns]"]).columns:
+            
+            is_date_like = False
             # Condición para identificar columnas que podrían ser fechas
             if pd.api.types.is_string_dtype(df[col].dtype):
                 is_date_like = (
