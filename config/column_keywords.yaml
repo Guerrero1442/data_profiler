@@ -18,6 +18,7 @@ text_keywords:
   - "aut"
   - "cum"
   - "num_afiliado"
+  - "id"
 
 float_keywords:
   - "costo"
@@ -31,3 +32,15 @@ date_formats:
   - "%d/%m/%Y"
   - "%d-%m-%Y"
   - "%Y/%m/%d"
+
+boolean_true_values:
+  - "true"
+  - "yes"
+  - "verdadero"
+  - "si"
+  - "sí"
+
+boolean_false_values:
+  - "false"
+  - "no"
+  - "falso"
