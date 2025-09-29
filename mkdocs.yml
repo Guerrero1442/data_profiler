@@ -1,0 +1,44 @@
+site_name: Data Profiler
+repo_url: https://github.com/guerrero1442/data_profiler
+site_author: Tu Nombre
+site_description: Documentación para el paquete Data Profiler.
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/weather-sunny
+        name: Cambiar a modo oscuro
+    - scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Cambiar a modo claro
+  features:
+    - content.code.copy
+    - navigation.tabs
+    - navigation.top
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_root_heading: true
+            show_source: true
+
+nav:
+  - Home: index.md
+  - Primeros Pasos: getting_started.md
+  - Referencia de la API:
+      - DataLoader: API/data_loader.md
+      - TypeDetector: API/type_detector.md
+      - SchemaGenerator: API/schema_generator.md
+      - Excepciones: API/exceptions.md

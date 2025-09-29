@@ -7,6 +7,9 @@ requires-python = ">=3.11"
 dependencies = [
     "fastparquet>=2024.11.0",
     "loguru>=0.7.3",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.20",
+    "mkdocstrings-python>=1.18.2",
     "openpyxl>=3.1.5",
     "pandas>=2.3.2",
     "pyarrow>=21.0.0",
@@ -14,4 +17,11 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "pytest>=8.4.2",
     "pyyaml>=6.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.20",
+    "mkdocstrings-python>=1.18.2"
 ]
