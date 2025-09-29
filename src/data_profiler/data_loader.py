@@ -1,3 +1,11 @@
+"""
+Manages data loading from various file sources.
+
+This module provides the DataLoader class, which uses a specific configuration
+to read data from CSV, Excel, JSON, and Parquet files, converting them into
+a pandas DataFrame optimized with PyArrow.
+"""
+
 import pandas as pd
 from typing import Dict, Callable, Type
 from loguru import logger
@@ -13,7 +21,16 @@ from data_profiler import (
 )
 
 class DataLoader:
+    """Loads data from a file source based on a given configuration."""
+    
     def __init__(self, config: LoadConfig):
+        """Initializes the DataLoader.
+
+        Args:
+            config: A configuration object (e.g., CsvLoadConfig, ExcelLoadConfig)
+                    that specifies the file path and other loading parameters.
+        """        
+        
         self.config = config
 
         self._loaders: Dict[Type[LoadConfig], Callable[[], pd.DataFrame]] = {
@@ -23,7 +40,17 @@ class DataLoader:
         }
 
     def load(self) -> pd.DataFrame:
-        #! Cambiar comentarios a ingles
+        """Loads a DataFrame from the file path specified in the configuration.
+
+        Returns:
+            A pandas DataFrame with the loaded data.
+
+        Raises:
+            UnsupportedFileTypeError: If the file type is not supported.
+            InvalidConfigurationError: If the loading configuration is invalid
+                                       (e.g., incorrect delimiter, non-existent Excel sheet).
+        """
+
         logger.info(f"iniciando la carga de datos desde {self.config.file_path}")
 
         for config_type, loader in self._loaders.items():
@@ -35,6 +62,7 @@ class DataLoader:
         )
 
     def _load_csv(self) -> pd.DataFrame:
+        """Loads data from a CSV file."""
         
         logger.info(
             f"Leyendo CSV con separador '{self.config.separator}' desde {self.config.file_path}"
@@ -63,6 +91,7 @@ class DataLoader:
             ) from e
 
     def _load_excel(self) -> pd.DataFrame:
+        """Loads data from an Excel file, either a specific sheet or all sheets."""        
         
         if self.config.sheet_name:
             logger.info(
@@ -86,7 +115,8 @@ class DataLoader:
         return pd.concat(all_sheets_df, ignore_index=True)
 
     def _load_simple(self) -> pd.DataFrame:
-        """Carga archivos que no requieren parametros extra, como JSON o Parquet."""
+        """Loads files that do not require extra parameters, like JSON or Parquet."""
+
         file_type = FileType.from_extension(self.config.file_path.suffix)
 
         simple_loaders = {
