@@ -9,6 +9,9 @@ from data_profiler import (
 )
 
 
+# En: tests/test_type_detector.py
+
+
 @pytest.fixture
 def detector_config(tmp_path: Path) -> TypeDetectorConfig:
     """Crea una configuración de TypeDetector para las pruebas."""
@@ -22,6 +25,19 @@ float_keywords:
 date_formats:
   - "%Y-%m-%d"
   - "%d/%m/%Y"
+boolean_true_values:
+  - "true"
+  - "t"
+  - "1"
+  - "yes"
+  - "si"
+  - "s"
+boolean_false_values:
+  - "false"
+  - "f"
+  - "0"
+  - "no"
+  - "n"
 """
     config_path = tmp_path / "keywords.yaml"
     config_path.write_text(yaml_content)
@@ -297,3 +313,59 @@ def test_numeric_column_with_date_keyword_in_name_is_not_converted_to_date(
     result_df = detector.run_detection()
 
     assert pd.api.types.is_integer_dtype(result_df["id_lote_fecha"])
+
+def test_boolean_conversion_with_standard_values(detector_config: TypeDetectorConfig):
+    """
+    Verifica que una columna con 'si'/'no' se convierta a booleano y conserve los nulos.
+    """
+    data = {"activo": ["si", "no", np.nan, "si", "no"]}
+    df = pd.DataFrame(data)
+    detector = TypeDetector(df, detector_config)
+
+    result_df = detector.run_detection()
+
+    assert pd.api.types.is_bool_dtype(result_df["activo"])
+    assert result_df["activo"][0] is True
+    assert result_df["activo"][1] is False
+    assert pd.isna(result_df["activo"][2])
+
+def test_boolean_conversion_with_mixed_case_and_values(detector_config: TypeDetectorConfig):
+    """
+    Verifica que la conversión funcione con mayúsculas/minúsculas mixtas y diferentes
+    representaciones de true/false (ej. 'True', '0', 'f').
+    """
+    data = {"es_valido": ["True", "0", "f", "1", "YES", None, "N"]}
+    df = pd.DataFrame(data)
+    detector = TypeDetector(df, detector_config)
+
+    result_df = detector.run_detection()
+
+    assert not pd.api.types.is_bool_dtype(result_df["es_valido"])
+
+def test_no_boolean_conversion_for_ambiguous_values(detector_config: TypeDetectorConfig):
+    """
+    Verifica que una columna con valores no definidos en las listas (ej. 'tal vez')
+    NO se convierta a booleano y permanezca como string.
+    """
+    data = {"confirmado": ["si", "tal vez"]}
+    df = pd.DataFrame(data)
+    detector = TypeDetector(df, detector_config)
+
+    result_df = detector.run_detection()
+
+    # La columna no debe ser booleana, sino string
+    assert not pd.api.types.is_bool_dtype(result_df["confirmado"])
+    assert pd.api.types.is_string_dtype(result_df["confirmado"])
+
+def test_no_boolean_conversion_for_more_than_two_values(detector_config: TypeDetectorConfig):
+    """
+    Verifica que una columna con más de dos valores únicos (que no son booleanos conocidos)
+    no se convierta.
+    """
+    data = {"estado": ["activo", "inactivo", "pendiente"]}
+    df = pd.DataFrame(data)
+    detector = TypeDetector(df, detector_config)
+
+    result_df = detector.run_detection()
+
+    assert not pd.api.types.is_bool_dtype(result_df["estado"])
