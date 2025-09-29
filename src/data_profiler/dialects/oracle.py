@@ -34,6 +34,12 @@ class OracleDialect(Dialect):
                  return f"CHAR({int(max_len)})"
             else:
                 return f"VARCHAR2({int(max_len)})"
+        elif pd.api.types.is_bool_dtype(dtype):
+            max_len = series.astype(str).str.len().max()
+            if (series.astype(str).str.len() == max_len).all():
+                return f"CHAR({int(max_len)})"
+            else:
+                return f"VARCHAR2({int(max_len)})"
         elif pa.types.is_date(dtype.pyarrow_dtype):
             return "DATE"
         elif pa.types.is_timestamp(dtype.pyarrow_dtype):

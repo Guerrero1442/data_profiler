@@ -1,4 +1,5 @@
 import pandas as pd
+
 from .context import TypeDetectorConfig
 from loguru import logger
 from .steps import (
@@ -6,6 +7,7 @@ from .steps import (
     ForcedTextConversionStep,
     NumericConversionStep,
     DateConversionStep,
+    BooleanConversionStep,
     CategoricalConversionStep,
     ObjectToStringStep
 )
@@ -21,6 +23,7 @@ class TypeDetector:
             ForcedTextConversionStep(config),
             NumericConversionStep(config),
             DateConversionStep(config),
+            BooleanConversionStep(config),
             CategoricalConversionStep(config),
             ObjectToStringStep(config)
         ]

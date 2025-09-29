@@ -31,10 +31,14 @@ class SchemaGenerator:
             db_type = self.dialect.map_dtype(self.df[column])
             is_mandatory = 'No Obligatorio' if self.df[column].isnull().any() else 'Obligatorio'
             allowed_values = self._analyze_patterns(column)
+            if self.df[column].isnull().all():
+                longitud = 0
+            else:
+                longitud = self.df[column].astype(str).str.len().max()
 
             self.schema_dict[column] = {
                 'tipo': db_type,
-                'longitud': self.df[column].astype(str).str.len().max(),
+                'longitud': longitud,
                 'valores_permitidos': allowed_values,
                 'obligatoria': is_mandatory,
             }
@@ -83,8 +87,10 @@ class SchemaGenerator:
         Analiza los patrones de una columna para obtener valores permitidos o estadísticas.
         """
         dtype = self.df[column].dtype
-        if isinstance(self.df[column].dtype, pd.CategoricalDtype):
+        if isinstance(self.df[column].dtype, pd.CategoricalDtype) :
             return self.df[column].cat.categories.tolist()
+        elif pd.api.types.is_bool_dtype(dtype):
+            return self.df[column].dropna().unique().tolist()
         elif pd.api.types.is_numeric_dtype(dtype):
             stats = self.df[column].describe()
             return (f"min: {stats['min']:.1f} - max: {stats['max']:.1f} - "

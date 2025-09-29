@@ -16,9 +16,11 @@ class BigQueryDialect(Dialect):
         if pd.api.types.is_integer_dtype(dtype):
             return "INTEGER"
         elif pd.api.types.is_float_dtype(dtype):
-            return "DECIMAL"
+            return "NUMERIC"
         elif isinstance(dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(dtype):
             return "STRING"
+        elif pd.api.types.is_bool_dtype(dtype):
+            return "BOOLEAN"
         elif pa.types.is_date(dtype.pyarrow_dtype):
             return "DATE"
         elif pa.types.is_timestamp(dtype.pyarrow_dtype):
