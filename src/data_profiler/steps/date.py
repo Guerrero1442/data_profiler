@@ -26,7 +26,7 @@ class DateConversionStep(ConversionStep):
         return all_midnight
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("Iniciando conversion de columnas de fecha.")
+        logger.debug("Iniciando conversion de columnas de fecha.")
         for col in df.select_dtypes(include=["object", "datetime64[ns]"]).columns:
             
             is_date_like = False
@@ -66,7 +66,7 @@ class DateConversionStep(ConversionStep):
                                 pandas_timestamp_arrow_type
                             )
                         logger.success(
-                            f"Columna '{col}' convertida a 'datetime' (formato inferido)."
+                            f"Columna '{col}' convertida exitosamente a tipo fecha/timestamp."
                         )
                     else:
                         # Si la inferencia no fue exitosa, volvemos a la columna original y no hacemos nada.

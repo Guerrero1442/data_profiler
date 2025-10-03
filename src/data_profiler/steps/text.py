@@ -12,12 +12,12 @@ class ForcedTextConversionStep(ConversionStep):
         )
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("Iniciando conversion de columnas forzadas a texto.")
+        logger.debug("Iniciando conversión forzada a texto por palabra clave.")
         for col in df.columns:
             if self._is_forced_text(col):
                 logger.success(f"Columna '{col}' forzada a 'string' por palabra clave.")
                 df[col] = df[col].astype("string[pyarrow]")
-                
+
         return df
 
 
@@ -26,19 +26,18 @@ class EmptyColumnsToStringStep(ConversionStep):
         empty_mask = df.isnull().all()
         empty_cols = df.columns[empty_mask].tolist()
         if empty_cols:
-            logger.warning(f"Columnas vacias detectadas: {empty_cols}")
+            logger.warning(f"Columnas vacías detectadas: {empty_cols}")
             for col in empty_cols:
                 df[col] = df[col].astype("string[pyarrow]")
             logger.success(
-                f"Columnas vacias convertidas a tipo 'string[pyarrow]': {empty_cols}"
+                f"Columnas vacías convertidas a 'string[pyarrow]': {empty_cols}"
             )
-
         return df
 
 
 class ObjectToStringStep(ConversionStep):
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("Convirtiendo columnas de tipo 'object' a 'string[pyarrow]'.")
+        logger.debug("Convirtiendo columnas 'object' restantes a 'string'.")
         for col in df.select_dtypes(include=["object"]).columns:
             df[col] = df[col].astype("string[pyarrow]")
             logger.success(f"Columna '{col}' convertida a 'string[pyarrow]'.")

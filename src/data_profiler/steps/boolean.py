@@ -22,7 +22,7 @@ class BooleanConversionStep(ConversionStep):
         return unique_values_lower.issubset(allowed_values)
     
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("Starting boolean conversion step.")
+        logger.debug("Starting boolean conversion step.")
         
         true_values = self.config.keywords.get("boolean_true_values", ["true", "yes", "si"])
         false_values = self.config.keywords.get("boolean_false_values", ["false", "no"])
@@ -33,7 +33,7 @@ class BooleanConversionStep(ConversionStep):
         
         for col in df.select_dtypes(include=['object', 'string']).columns:
             if self._is_potential_boolean(df[col]):
-                logger.info(f"Converting column '{col}' to boolean.")
+                logger.debug(f"Converting column '{col}' to boolean.")
                 try:
                     df[col] = df[col].astype(str).str.strip().str.lower().map(map_to_bool).astype('boolean[pyarrow]')
                     logger.success(f"Column '{col}' successfully converted to boolean.")

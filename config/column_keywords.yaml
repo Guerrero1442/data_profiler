@@ -18,7 +18,7 @@ text_keywords:
   - "aut"
   - "cum"
   - "num_afiliado"
-  - "id"
+  - "periodo"
 
 float_keywords:
   - "costo"

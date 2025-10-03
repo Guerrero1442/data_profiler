@@ -73,5 +73,7 @@ class Settings(BaseSettings):
     bigquery_project_id: Optional[str] = Field(None, description="ID del proyecto de BigQuery")
     bigquery_dataset_id: Optional[str] = Field(None, description="ID del dataset de BigQuery")
     
+    log_level: str = Field("INFO", description="Nivel de log: DEBUG, INFO, WARNING, ERROR")
+    
     # Configuración para que Pydantic lea desde un archivo .env (opcional, pero útil para desarrollo)
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')

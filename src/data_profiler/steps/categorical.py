@@ -32,7 +32,7 @@ class CategoricalConversionStep(ConversionStep):
         return len(types_found) > 1
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("Iniciando conversion de columnas categoricas.")
+        logger.debug("Iniciando conversion de columnas categoricas.")
         for col in df.select_dtypes(include=["object", "string"]).columns:
             num_unique = df[col].nunique(dropna=True)
             total_count = len(df[col])
@@ -59,5 +59,5 @@ class CategoricalConversionStep(ConversionStep):
                     f"Columna '{col}' no cumple con umbral de cardinalidad ({cardinality:.4f} >= {self.config.cardinality_threshold}) o unicos ({num_unique} > {self.config.unique_count_limit})."
                 )
 
-        logger.info("Conversion de columnas categoricas completada.")
+        logger.debug("Conversion de columnas categoricas completada.")
         return df

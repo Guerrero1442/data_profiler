@@ -33,7 +33,7 @@ class TypeDetector:
         df_processed = self.df
         
         for step in self.steps:
-            logger.info(f"Ejecutando paso: {step.__class__.__name__}")
+            logger.debug(f"Ejecutando paso: {step.__class__.__name__}")
             df_processed = step.process(df_processed)
             
         logger.info("Detección de tipos completada.")

@@ -15,8 +15,24 @@ from data_profiler import (
 )
 from pydantic import ValidationError
 
+def setup_logger(file_path: Path, settings: Settings):
+    """
+    Configura un logger de loguru para registrar mensajes en un archivo y en la consola.
+    """
+    log_file_path = settings.output_directory_path / f"{file_path.stem}.log"
+    logger.remove()  # Elimina cualquier configuración previa del logger
+    logger.add(
+        log_file_path,
+        level=settings.log_level,
+        format="{time} {level} {message}",
+        encoding="utf-8",
+        mode="w",
+    )
+
 
 def process_file(file_path: Path, settings: Settings):
+    setup_logger(file_path, settings)
+    
     logger.info(f"Procesando archivo: {file_path.name}")
 
     try:
@@ -89,6 +105,8 @@ def main():
     logger.info(f"Buscando archivos en el directorio: {directory}")
     
     for filename in Path(directory).iterdir():
+        if filename.name.startswith('.') or filename.name.lower() == 'desktop.ini':
+            continue
         file_path = directory / filename
         if file_path.is_file():
             process_file(file_path, settings)

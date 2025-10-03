@@ -17,8 +17,8 @@ class NumericConversionStep(ConversionStep):
             return ".", ","
 
     def _convert_float_columns_to_int(self, df: pd.DataFrame) -> None:
-        logger.info(
-            "Convirtiendo columnas de tipo 'float' a 'Int64' cuando sea posible (no tengan decimales)."
+        logger.debug(
+            "Revisando columnas 'float' para posible conversión a 'Int64'."
         )
 
         float_arrow_cols = [
@@ -42,14 +42,14 @@ class NumericConversionStep(ConversionStep):
 
             if (pc.all(has_decimals).as_py()) | (df[col].isnull()).all():
                 df[col] = df[col].astype(pd.ArrowDtype(pa.int64()))
-                logger.success(f"Columna '{col}' convertida a 'int64[pyarrow]'.")
+                logger.success(f"Columna '{col}' convertida a 'int64[pyarrow]'.")            
             else:
                 logger.debug(
                     f"Columna '{col}' no puede ser convertida a 'int64[pyarrow]' (tiene decimales)."
                 )
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("Iniciando conversion de columnas numericas.")
+        logger.debug("Iniciando conversion de columnas numericas.")
         for col in df.select_dtypes(include=["object", "float64"]).columns:
 
             try:
@@ -68,12 +68,10 @@ class NumericConversionStep(ConversionStep):
                     
                 df[col] = df[col].astype(pd.ArrowDtype(pa.float64()))
                 
-                logger.debug(f"Columna '{col}' convertida a 'float64[pyarrow]'. {df[col].dtype}")
+                logger.debug(f"Columna '{col}' convertida a 'float64[pyarrow]'.")
+                
 
-                # Redondear a 2 decimales solo si tiene decimales significativos
-                # Usar PyArrow compute para verificar decimales
                 pa_array = pa.array(df[col])
-                # Verificar si hay decimales usando floor
                 floored = pc.floor(pa_array)
                 has_decimals = pc.not_equal(pa_array, floored)
                 

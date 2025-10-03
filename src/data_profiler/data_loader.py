@@ -116,6 +116,8 @@ class DataLoader:
 
     def _load_simple(self) -> pd.DataFrame:
         """Loads files that do not require extra parameters, like JSON or Parquet."""
+        
+        logger.info("Cargando archivo sin parámetros adicionales de configuración (JSON, Parquet, etc.)")
 
         file_type = FileType.from_extension(self.config.file_path.suffix)
 
