@@ -1,86 +1,99 @@
+from pathlib import Path
 from loguru import logger
 from data_profiler import (
-    Settings, 
-    TypeDetectorConfig, 
-    TypeDetector, 
-    FileType, 
-    CsvLoadConfig, 
-    ExcelLoadConfig, 
-    LoadConfig, 
+    Settings,
+    TypeDetectorConfig,
+    TypeDetector,
+    FileType,
+    CsvLoadConfig,
+    ExcelLoadConfig,
+    LoadConfig,
     DataLoader,
     SchemaGenerator,
     OracleDialect,
-    BigQueryDialect
+    BigQueryDialect,
 )
 from pydantic import ValidationError
 
-def main():
+
+def process_file(file_path: Path, settings: Settings):
+    logger.info(f"Procesando archivo: {file_path.name}")
+
     try:
-        settings = Settings()   
-        
-        file_path = settings.data_file_path
-        
         file_type = FileType.from_extension(file_path.suffix)
-        
+
         if file_type in [FileType.TXT, FileType.CSV]:
-            config = CsvLoadConfig(file_path=file_path, separator=settings.data_separator, encoding=settings.data_encoding)
+            config = CsvLoadConfig(
+                file_path=file_path,
+                separator=settings.data_separator,
+                encoding=settings.data_encoding,
+            )
         elif file_type in [FileType.XLSX, FileType.XLS]:
-            config = ExcelLoadConfig(file_path=file_path, sheet_name=settings.data_sheet_name)
+            config = ExcelLoadConfig(
+                file_path=file_path, sheet_name=settings.data_sheet_name
+            )
         else:
             config = LoadConfig(file_path=file_path)
-            
+
         loader = DataLoader(config)
         datos = loader.load()
+        logger.success(
+            f"Datos cargados exitosamente desde {file_path.name} con {len(datos)} filas y {len(datos.columns)} columnas."
+        )
         
-        logger.success(f"Datos cargados exitosamente desde {file_path} con {len(datos)} filas y {len(datos.columns)} columnas.")
+        # 2. Detectar tipos de datos
+        detector_config = TypeDetectorConfig.from_yaml(settings.keyword_config_path)
+        detector = TypeDetector(datos, detector_config)
+        df_optimizado = detector.run_detection()
+        df_optimizado.columns = df_optimizado.columns.str.replace('\n', ' ').str.strip()
+        
+        # 3. Generacion de esquema y DDL
+        dialecto_bigquery = BigQueryDialect(
+            project_id=settings.bigquery_project_id,
+            dataset_id=settings.bigquery_dataset_id
+        )
+        schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_bigquery)
+        
+        # Define nombres de salida dinamicos basados en el nombre del archivo de entrada
+        output_base_name = file_path.stem
+        output_dir = settings.output_directory_path
+        output_dir.mkdir(exist_ok=True)
+        
+        schema_excel_path = output_dir / f"{output_base_name}_schema.xlsx"
+        ddl_sql_path = output_dir / f"{output_base_name}_schema.sql"
+        
+        schema_gen.to_excel(schema_excel_path)
+        logger.success(f"Esquema guardado en {schema_excel_path}")
+
+        schema_gen.to_ddl_file(output_base_name, ddl_sql_path)
+        logger.success(f"DDL guardado en {ddl_sql_path}")
+        
     except ValidationError as e:
-        logger.error(f"Error de validación en la configuración: {e}")
+        logger.error(f"Error de validación en la configuración para {file_path.name}: {e}")
         return
     except Exception as e:
-        logger.error(f"Error inesperado: {e}")
+        logger.error(f"Error inesperado en {file_path.name}: {e}")
         return
-        
+
+
+def main():
+    
     # Flujo 1: Usar la función interactiva de alto nivel
-    logger.info("Iniciando flujo interactivo...")
-    
-    if datos is None or datos.empty:
-        logger.error("No se cargaron datos. Terminando el programa.")
+    try: 
+        settings = Settings()
+    except ValidationError as e:
+        logger.error(f"Error de validación en las variables de entorno: {e}")
         return
-    logger.info("Datos cargados exitosamente en el flujo interactivo.")
 
-    config_path = "config/column_keywords.yaml"
-    detector_config = TypeDetectorConfig.from_yaml(config_path)
-
+    directory = settings.data_directory_path
+    logger.info(f"Buscando archivos en el directorio: {directory}")
     
-    detector = TypeDetector(datos, detector_config)
-    df_optimizado = detector.run_detection()
+    for filename in Path(directory).iterdir():
+        file_path = directory / filename
+        if file_path.is_file():
+            process_file(file_path, settings)
+        else:
+            logger.warning(f"{file_path} no es un archivo. Se omitirá.")
 
-    logger.info("Tipos y categorias detectados en el flujo interactivo.")
-    print(df_optimizado.dtypes) 
-    
-    df_optimizado.to_csv("data_optimizado.csv", index=False)
-
-    # eliminar saltos de lineas de los nombres de columnas
-    df_optimizado.columns = df_optimizado.columns.str.replace('\n', ' ').str.strip()
-
-    dialecto_bigquery = BigQueryDialect(
-        project_id=settings.bigquery_project_id,
-        dataset_id=settings.bigquery_dataset_id
-    )
-
-    # Schema generation
-    schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_bigquery)
-
-    # Generar y guardar archivo Excel
-    schema_gen.to_excel("schema.xlsx")
-    logger.info("Esquema exportado a schema.xlsx")
-
-    # Generar y guardar DDL para Oracle en un archivo .sql
-    table_name = "nt_unicos"
-    output_sql_path = "schema.sql"
-
-    # Generar y mostrar DDL para Oracle
-    schema_gen.to_ddl_file(table_name, output_sql_path)
-    
 if __name__ == "__main__":
     main()

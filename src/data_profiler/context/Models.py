@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, Field, FilePath
+from pydantic import BaseModel, Field, FilePath, DirectoryPath
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import yaml
 from loguru import logger
@@ -58,7 +58,10 @@ class Settings(BaseSettings):
     Pydantic leerá automáticamente las variables con estos nombres.
     """
     # Para cargar el archivo de datos
-    data_file_path: FilePath
+    data_directory_path: DirectoryPath = Field(..., description="Ruta al directorio que contiene los archivos de datos")
+
+    output_directory_path: DirectoryPath = Field("output_schemas", description="Ruta al directorio de salida para esquemas y DDL")
+
     data_separator: str = Field(",", description="Separador para archivos CSV/TXT")
     data_encoding: str = Field("utf-8", description="Codificación para archivos CSV/TXT")
     data_sheet_name: Optional[str] = Field(None, description="Nombre de la hoja para archivos Excel")
