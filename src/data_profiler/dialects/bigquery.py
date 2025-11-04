@@ -14,9 +14,9 @@ class BigQueryDialect(Dialect):
         dtype = series.dtype
         
         if pd.api.types.is_integer_dtype(dtype):
-            return "INTEGER"
+            return "INT64"
         elif pd.api.types.is_float_dtype(dtype):
-            return "NUMERIC"
+            return "FLOAT64"
         elif isinstance(dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(dtype):
             return "STRING"
         elif pd.api.types.is_bool_dtype(dtype):
