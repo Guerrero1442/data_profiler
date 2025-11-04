@@ -33,10 +33,11 @@ class DateConversionStep(ConversionStep):
             # Condición para identificar columnas que podrían ser fechas
             if pd.api.types.is_string_dtype(df[col].dtype):
                 is_date_like = (
-                    df[col].str.contains(r"[/-]", na=False).any()
+                    df[col].astype(str).str.contains(r"[/-]", na=False).any()
                     or "fecha" in col.lower()
                     or "date" in col.lower()
                 )
+
 
             if is_date_like or pd.api.types.is_datetime64_ns_dtype(df[col].dtype):
                 original_col = df[col].copy()
