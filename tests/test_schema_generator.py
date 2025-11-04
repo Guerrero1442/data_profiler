@@ -121,8 +121,8 @@ def test_generate_schema_dict_correctly_identifies_types_bigquery(optimized_data
     schema = schema_gen.generate_schema_dict()
 
     # Assert
-    assert schema["id_usuario"]["tipo"] == "INTEGER"
-    assert schema["monto_compra"]["tipo"] == "NUMERIC"
+    assert schema["id_usuario"]["tipo"] == "INT64"
+    assert schema["monto_compra"]["tipo"] == "FLOAT64"
     assert schema["fecha_registro"]["tipo"] == "DATE"
     assert schema["fecha_ultima_compra"]["tipo"] == "TIMESTAMP"
     assert schema["pais"]["tipo"] == "STRING"
@@ -152,8 +152,8 @@ def test_to_ddl_file_creates_correct_bigquery_statement(optimized_dataframe: pd.
     
     # Verificar el contenido del DDL
     assert f"CREATE OR REPLACE TABLE `{table_name}` (" in ddl_content
-    assert '`id_usuario` INTEGER' in ddl_content
-    assert '`monto_compra` NUMERIC' in ddl_content
+    assert '`id_usuario` INT64' in ddl_content
+    assert '`monto_compra` FLOAT64' in ddl_content
     assert '`fecha_registro` DATE' in ddl_content
     assert '`pais` STRING' in ddl_content
     assert '`descripcion_larga` STRING' in ddl_content
