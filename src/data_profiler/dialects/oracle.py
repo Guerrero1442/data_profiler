@@ -30,7 +30,7 @@ class OracleDialect(Dialect):
             return f"NUMBER({precision}, 2)"
         elif isinstance(dtype, pd.CategoricalDtype) or pd.api.types.is_string_dtype(dtype):
             max_len = series.astype(str).str.len().max()
-            if (series.str.len() == max_len).all():
+            if (series.astype(str).str.len() == max_len).all():
                  return f"CHAR({int(max_len)})"
             else:
                 return f"VARCHAR2({int(max_len)})"
