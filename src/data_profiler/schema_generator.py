@@ -3,29 +3,32 @@ from pathlib import Path
 from typing import Dict, Any, List, Union
 from loguru import logger
 from .dialects import Dialect
+from .context import TypeDetectorConfig
 
 class SchemaGenerator:
     """
-    Genera un esquema de base de datos y metadatos a partir de un DataFrame.
+    Generates a database schema and metadata from a DataFrame.
     """
 
-    def __init__(self, df: pd.DataFrame, dialect: Dialect):
+    def __init__(self, df: pd.DataFrame, dialect: Dialect, config: TypeDetectorConfig):
         """
-        Inicializa el generador de esquemas.
-
+        Initializes the SchemaGenerator
+        
         Args:
-            df: El DataFrame optimizado del cual se generará el esquema.
+            df: The DataFrame to analyze.
+            dialect: The database dialect to use for type mapping and DDL generation.
         """
         self.df = df
         self.dialect = dialect
         self.schema_dict: Dict[str, Dict[str, Any]] = {}
+        self.config = config
 
     def generate_schema_dict(self) -> Dict[str, Dict[str, Any]]:
         """
-        Analiza el DataFrame y genera un diccionario con los metadatos de cada columna.
-
-        Returns:
-            Un diccionario que contiene el esquema y los metadatos.
+        Analyzes the DataFrame and generates a schema dictionary with metadata.
+        
+        Returns: 
+            A dictionary where keys are column names and values are dictionaries with metadata.
         """
         for column in self.df.columns:
             db_type = self.dialect.map_dtype(self.df[column])
@@ -41,15 +44,29 @@ class SchemaGenerator:
                 'longitud': longitud,
                 'valores_permitidos': allowed_values,
                 'obligatoria': is_mandatory,
+                'observaciones': self.observaciones_column(column)
             }
         return self.schema_dict
+    
+    def observaciones_column(self, column: str) -> str:
+        
+        # revisar si la columna es nula
+        if self.df[column].isnull().all():
+            return "Columna vacía."
+        
+        keywords_text = self.config.keywords.get("text_keywords", [])
+        
+        if any(keyword in column.lower() for keyword in keywords_text):
+            return f"Columna de texto forzada por palabra clave."
+        
+        return ""
 
     def to_excel(self, output_path: Union[str, Path]) -> None:
         """
-        Exporta el diccionario del esquema a un archivo Excel.
-
+        Exports the schema dictionary to an Excel file.
+        
         Args:
-            output_path: La ruta donde se guardará el archivo Excel.
+            output_path: The path where the Excel file will be saved.
         """
         if not self.schema_dict:
             self.generate_schema_dict()
@@ -60,13 +77,11 @@ class SchemaGenerator:
 
     def to_ddl_file(self, table_name: str, output_path: Union[str, Path]) -> None:
         """
-        Genera una sentencia DDL CREATE TABLE para Oracle.
-
+        Generates a DDL file for creating a table with the schema.
+        
         Args:
-            table_name: El nombre de la tabla a crear.
-
-        Returns:
-            Una cadena de texto con la sentencia DDL.
+            table_name: The name of the table to create.
+            output_path: The path where the DDL file will be saved.
         """
         if not self.schema_dict:
             self.generate_schema_dict()
@@ -84,7 +99,13 @@ class SchemaGenerator:
         
     def _analyze_patterns(self, column: str) -> Union[str, List[Any]]:
         """
-        Analiza los patrones de una columna para obtener valores permitidos o estadísticas.
+        Analyzes the patterns of a column to obtain allowed values or statistics.
+        
+        Args:
+            column: The column name to analyze.
+            
+        Returns:
+            A list of allowed values for categorical/boolean columns, or a string with statistics for numeric/datetime columns.
         """
         dtype = self.df[column].dtype
         if isinstance(self.df[column].dtype, pd.CategoricalDtype) :
