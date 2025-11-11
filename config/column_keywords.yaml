@@ -16,9 +16,11 @@ text_keywords:
   - "mes"
   - "anio"
   - "aut"
+  - "cobertura"
   - "cum"
   - "num_afiliado"
   - "periodo"
+  - "prestador"
 
 float_keywords:
   - "costo"
