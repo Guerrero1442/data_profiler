@@ -27,6 +27,8 @@ def optimized_dataframe() -> pd.DataFrame:
         "codigo_fijo": pd.Series(["AB123", "CD456", "EF789", "GH012", "IJ345"], dtype="string"),
         "valores_nulos": pd.Series([np.nan, np.nan, np.nan, np.nan, np.nan], dtype="string"),
         "cadenas_vacias": pd.Series(["", "", "", "", ""], dtype="string"),
+        "boolean_col": pd.Series(["true", "false", "true", "true", "false"], dtype="string"),
+        "boolean_col_obs": pd.Series(["yes", "no", "yes", "no", "yes"], dtype="string"),
     }
     
     # convertir a pyarrow
@@ -42,6 +44,10 @@ def test_config(tmp_path: Path) -> TypeDetectorConfig:
     keywords_data = {
         "text_keywords": ["codigo", "no_id", "nombre", "descripcion"],
         "date_keywords": ["fecha"],
+        "boolean_true_values": ["true"],
+        "boolean_false_values": ["false"],
+        "recomended_true_values": ["yes", "si"],
+        "recomended_false_values": ["no"]
     }
     
     # Crear el archivo YAML temporal
@@ -88,7 +94,8 @@ def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_datafr
     assert schema["codigo_fijo"]["tipo"] == "CHAR(5)" # Como todos tienen la misma longitud, debería ser CHAR
     assert schema["valores_nulos"]["tipo"] == "VARCHAR2(1)" # Columna con solo nulos
     assert schema["cadenas_vacias"]["tipo"] == "VARCHAR2(1)" # Columna con solo cadenas vacías
-    
+    assert schema["boolean_col"]["tipo"] == "VARCHAR2(5)" # Columna con valores booleanos como texto
+    assert schema["boolean_col_obs"]["tipo"] == "VARCHAR2(3)" # Columna con valores booleanos como texto
     # Verificamos la obligatoriedad
     assert schema["id_usuario"]["obligatoria"] == "Obligatorio"
     assert schema["descripcion_larga"]["obligatoria"] == "No Obligatorio"
@@ -100,6 +107,7 @@ def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_datafr
     # Verificamos observaciones
     assert schema["valores_nulos"]["observaciones"] == "Columna vacía."
     assert schema["codigo_fijo"]["observaciones"] == "Columna de texto forzada por palabra clave."
+    assert schema["boolean_col_obs"]["observaciones"] == "Es recomendable transformar esta columna a Booleano."
 
 def test_to_ddl_file_creates_correct_oracle_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect, test_config: TypeDetectorConfig):
     """

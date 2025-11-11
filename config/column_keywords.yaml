@@ -37,12 +37,13 @@ date_formats:
 
 boolean_true_values:
   - "true"
-  - "yes"
-  - "verdadero"
-  - "si"
-  - "sí"
 
 boolean_false_values:
   - "false"
+
+recomended_true_values:
+  - "yes"
+  - "si"
+
+recomended_false_values:
   - "no"
-  - "falso"

@@ -12,8 +12,8 @@ class BooleanConversionStep(ConversionStep):
         if len(unique_values) > 2:
             return False
 
-        true_values = self.config.keywords.get("boolean_true_values", ["true"])
-        false_values = self.config.keywords.get("boolean_false_values", ["false"])
+        true_values = self.config.keywords.get("boolean_true_values", [])
+        false_values = self.config.keywords.get("boolean_false_values", [])
         
         allowed_values = set(true_values + false_values)
         
@@ -24,8 +24,8 @@ class BooleanConversionStep(ConversionStep):
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.debug("Starting boolean conversion step.")
         
-        true_values = self.config.keywords.get("boolean_true_values", ["true", "yes", "si"])
-        false_values = self.config.keywords.get("boolean_false_values", ["false", "no"])
+        true_values = self.config.keywords.get("boolean_true_values", [])
+        false_values = self.config.keywords.get("boolean_false_values", [])
         
         map_to_bool = {str(v).lower(): True for v in true_values}
         map_to_bool.update({str(v).lower(): False for v in false_values})

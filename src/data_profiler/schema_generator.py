@@ -48,16 +48,29 @@ class SchemaGenerator:
             }
         return self.schema_dict
     
-    def observaciones_column(self, column: str) -> str:
-        
+    def observaciones_column(self, column: str) -> str:        
         # revisar si la columna es nula
         if self.df[column].isnull().all():
             return "Columna vacía."
         
+        # Verificar si es recomendable convertir a booleano
+        recomended_true = self.config.keywords.get("recomended_true_values", [])
+        recomended_false = self.config.keywords.get("recomended_false_values", [])
+        
+        if recomended_true or recomended_false:
+            # Obtener valores únicos no nulos de la columna
+            unique_values = self.df[column].dropna().astype(str).str.lower().unique()
+            
+            allowed_recomended_values = set([str(v).lower() for v in recomended_true + recomended_false])
+                        
+            if set(unique_values).issubset(allowed_recomended_values) and len(unique_values) <= 2:
+                return "Es recomendable transformar esta columna a Booleano."
+        
+        # Verificar si fue forzada como texto por palabra clave
         keywords_text = self.config.keywords.get("text_keywords", [])
         
         if any(keyword in column.lower() for keyword in keywords_text):
-            return f"Columna de texto forzada por palabra clave."
+            return "Columna de texto forzada por palabra clave."
         
         return ""
 
