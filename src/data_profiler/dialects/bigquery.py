@@ -25,6 +25,8 @@ class BigQueryDialect(Dialect):
             return "DATE"
         elif pa.types.is_timestamp(dtype.pyarrow_dtype):
             return "TIMESTAMP"
+        elif pa.types.is_null(dtype.pyarrow_dtype):
+            return "STRING" 
         else:
             logger.warning(f"Could not determine type for {series.name}. Defaulting to STRING.")
             return "STRING"

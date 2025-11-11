@@ -3,8 +3,9 @@ import pytest
 import pandas as pd
 import pyarrow as pa
 import numpy as np
+import yaml
 from pathlib import Path
-from data_profiler import SchemaGenerator, OracleDialect, BigQueryDialect
+from data_profiler import SchemaGenerator, OracleDialect, BigQueryDialect, TypeDetectorConfig
 
 # 1. Fixture para crear un DataFrame optimizado de prueba
 #    Este DataFrame simula la salida del TypeDetector.
@@ -35,6 +36,23 @@ def optimized_dataframe() -> pd.DataFrame:
     return pd.DataFrame(data)
 
 @pytest.fixture
+def test_config(tmp_path: Path) -> TypeDetectorConfig:
+    """Crea una configuración de prueba."""
+    # Crear un archivo YAML temporal con las palabras clave de prueba
+    keywords_data = {
+        "text_keywords": ["codigo", "no_id", "nombre", "descripcion"],
+        "date_keywords": ["fecha"],
+    }
+    
+    # Crear el archivo YAML temporal
+    yaml_path = tmp_path / "test_keywords.yaml"
+    with open(yaml_path, "w", encoding="utf-8") as f:
+        yaml.dump(keywords_data, f)
+    
+    # Crear la configuración usando from_yaml
+    return TypeDetectorConfig.from_yaml(str(yaml_path))
+
+@pytest.fixture
 def dialecto_oracle() -> OracleDialect:
     """Proporciona una instancia del dialecto Oracle."""
     return OracleDialect()
@@ -45,13 +63,13 @@ def dialecto_bigquery() -> BigQueryDialect:
     return BigQueryDialect()
 
 # 2. Pruebas para SchemaGenerator
-def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_dataframe: pd.DataFrame, dialecto_oracle: OracleDialect):
+def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_dataframe: pd.DataFrame, dialecto_oracle: OracleDialect, test_config: TypeDetectorConfig):
     """
     Verifica que el diccionario generado contenga los tipos de Oracle,
     longitudes y obligatoriedad correctos para cada columna.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle, config=test_config)
 
     # Act
     schema = schema_gen.generate_schema_dict()
@@ -74,14 +92,22 @@ def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_datafr
     # Verificamos la obligatoriedad
     assert schema["id_usuario"]["obligatoria"] == "Obligatorio"
     assert schema["descripcion_larga"]["obligatoria"] == "No Obligatorio"
+    
+    # Verificamos las longitudes
+    assert schema["descripcion_larga"]["longitud"] == 20
+    assert schema["codigo_fijo"]["longitud"] == 5
+    
+    # Verificamos observaciones
+    assert schema["valores_nulos"]["observaciones"] == "Columna vacía."
+    assert schema["codigo_fijo"]["observaciones"] == "Columna de texto forzada por palabra clave."
 
-def test_to_ddl_file_creates_correct_oracle_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect):
+def test_to_ddl_file_creates_correct_oracle_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect, test_config: TypeDetectorConfig):
     """
     Verifica que el método to_ddl_file cree un archivo DDL con la sintaxis
     y los tipos de datos correctos para Oracle.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle, config=test_config)
     table_name = "CLIENTES_PROCESADOS"
     output_path = tmp_path / "schema_ddl.sql"
 
@@ -110,12 +136,12 @@ def test_to_ddl_file_creates_correct_oracle_statement(optimized_dataframe: pd.Da
     # Verificar que contiene comentario
     assert f"-- Esquema generado para la tabla {table_name}" in ddl_content
     
-def test_generate_schema_dict_correctly_identifies_types_bigquery(optimized_dataframe: pd.DataFrame, dialecto_bigquery: BigQueryDialect):
+def test_generate_schema_dict_correctly_identifies_types_bigquery(optimized_dataframe: pd.DataFrame, dialecto_bigquery: BigQueryDialect, test_config: TypeDetectorConfig):
     """
     Verifica que el diccionario generado contenga los tipos de BigQuery correctos.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_bigquery)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_bigquery, config=test_config)
 
     # Act
     schema = schema_gen.generate_schema_dict()
@@ -127,14 +153,14 @@ def test_generate_schema_dict_correctly_identifies_types_bigquery(optimized_data
     assert schema["fecha_ultima_compra"]["tipo"] == "TIMESTAMP"
     assert schema["pais"]["tipo"] == "STRING"
     assert schema["descripcion_larga"]["tipo"] == "STRING"
-    
-def test_to_ddl_file_creates_correct_bigquery_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_bigquery: BigQueryDialect):
+
+def test_to_ddl_file_creates_correct_bigquery_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_bigquery: BigQueryDialect, test_config: TypeDetectorConfig):
     """
     Verifica que el método to_ddl_file cree un archivo DDL con la sintaxis
     y los tipos de datos correctos para BigQuery.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_bigquery)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_bigquery, config=test_config)
     table_name = "CLIENTES_PROCESADOS"
     output_path = tmp_path / "schema_ddl_bq.sql"
 
@@ -162,12 +188,12 @@ def test_to_ddl_file_creates_correct_bigquery_statement(optimized_dataframe: pd.
     # Verificar que contiene comentario
     assert f"-- Esquema generado para la tabla {table_name} (BigQuery)" in ddl_content
 
-def test_to_excel_creates_file(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect):
+def test_to_excel_creates_file(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect, test_config: TypeDetectorConfig):
     """
     Verifica que el método to_excel cree un archivo en la ruta especificada.
     """
     # Arrange
-    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle)
+    schema_gen = SchemaGenerator(optimized_dataframe, dialect=dialecto_oracle, config=test_config)
     output_path = tmp_path / "schema_test.xlsx"
 
     # Act

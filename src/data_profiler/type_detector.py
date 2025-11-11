@@ -31,11 +31,11 @@ class TypeDetector:
 
         self.steps = [
             EmptyColumnsToStringStep(config),
-            ForcedTextConversionStep(config),
             NumericConversionStep(config),
             DateConversionStep(config),
             BooleanConversionStep(config),
             CategoricalConversionStep(config),
+            ForcedTextConversionStep(config),
             ObjectToStringStep(config)
         ]
         

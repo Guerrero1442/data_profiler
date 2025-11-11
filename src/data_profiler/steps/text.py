@@ -28,17 +28,17 @@ class EmptyColumnsToStringStep(ConversionStep):
         if empty_cols:
             logger.warning(f"Columnas vacías detectadas: {empty_cols}")
             for col in empty_cols:
-                df[col] = df[col].astype("string[pyarrow]")
+                df[col] = df[col].astype(pd.ArrowDtype(pa.null()))
             logger.success(
-                f"Columnas vacías convertidas a 'string[pyarrow]': {empty_cols}"
+                f"Columnas vacías convertidas a 'null': {empty_cols}"
             )
         return df
 
 
 class ObjectToStringStep(ConversionStep):
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.debug("Convirtiendo columnas 'object' restantes a 'string'.")
-        for col in df.select_dtypes(include=["object"]).columns:
+        logger.debug("Convirtiendo columnas 'string' restantes a 'string[pyarrow]'.")
+        for col in df.select_dtypes(include=["string"]).columns:
             df[col] = df[col].astype("string[pyarrow]")
             logger.success(f"Columna '{col}' convertida a 'string[pyarrow]'.")
         return df

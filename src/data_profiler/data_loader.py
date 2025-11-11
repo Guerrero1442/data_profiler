@@ -72,8 +72,7 @@ class DataLoader:
                 self.config.file_path,
                 delimiter=self.config.separator,
                 encoding=self.config.encoding,
-                engine="pyarrow",
-                dtype_backend="pyarrow"
+                dtype='string'
             )
             
             if csv_df.shape[1] <= 1:
@@ -99,7 +98,7 @@ class DataLoader:
             )
             try:
                 return pd.read_excel(
-                    self.config.file_path, sheet_name=self.config.sheet_name
+                    self.config.file_path, sheet_name=self.config.sheet_name, dtype='string'
                 )
             except ValueError as e:
                 raise InvalidConfigurationError(
@@ -109,7 +108,7 @@ class DataLoader:
         logger.info(f"Leyendo todas las hojas desde {self.config.file_path}")
         xls = pd.ExcelFile(self.config.file_path)
         all_sheets_df = [
-            pd.read_excel(xls, sheet_name=sheet) for sheet in xls.sheet_names
+            pd.read_excel(xls, sheet_name=sheet, dtype='string') for sheet in xls.sheet_names
         ]
 
         return pd.concat(all_sheets_df, ignore_index=True)

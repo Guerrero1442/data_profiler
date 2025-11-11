@@ -16,9 +16,6 @@ class OracleDialect(Dialect):
     def map_dtype(self, series: pd.Series) -> str:
         dtype = series.dtype
         
-        if series.isnull().all():
-            return "VARCHAR2(1)"
-        
         if dtype.name == 'string' and series.dropna().eq("").all():
             return "VARCHAR2(1)"
         
@@ -44,6 +41,8 @@ class OracleDialect(Dialect):
             return "DATE"
         elif pa.types.is_timestamp(dtype.pyarrow_dtype):
             return "TIMESTAMP"
+        elif pa.types.is_null(dtype.pyarrow_dtype):
+            return "VARCHAR2(1)"
         else:
             logger.warning(f"No se pudo determinar el tipo de {series.name}. Usando VARCHAR2(255) por defecto.")
             return "VARCHAR2(255)"

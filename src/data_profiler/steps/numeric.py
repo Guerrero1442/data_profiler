@@ -41,6 +41,7 @@ class NumericConversionStep(ConversionStep):
 
 
             if (pc.all(has_decimals).as_py()) | (df[col].isnull()).all():
+                
                 df[col] = df[col].astype(pd.ArrowDtype(pa.int64()))
                 logger.success(f"Columna '{col}' convertida a 'int64[pyarrow]'.")            
             else:
@@ -50,14 +51,22 @@ class NumericConversionStep(ConversionStep):
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.debug("Iniciando conversion de columnas numericas.")
-        for col in df.select_dtypes(include=["object", "float64"]).columns:
+        for col in df.select_dtypes(include=["string", "float64"]).columns:
 
             try:
-                if df[col].dtype == "object":
+                if df[col].dtype == "string":
+                    
+                    # si se encuentra un caracter no numerico, se registra en el log y se omite la conversion
+                    if df[col].str.contains(r"[^\d,.-]").any():
+                        logger.debug(
+                            f"Columna '{col}' contiene caracteres no numericos. Se omite la conversion a 'float64[pyarrow]'."
+                        )
+                        continue
+                    
                     decimal_sep, thousand_sep = self._infer_decimal_separator(df[col])
 
                     array_temp = pc.replace_substring(
-                    pa.array(df[col].astype(str)), pattern=thousand_sep, replacement=""
+                    pa.array(df[col]), pattern=thousand_sep, replacement=""
                 )
 
                     array_limpio = pc.replace_substring(

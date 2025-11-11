@@ -9,11 +9,11 @@ class BooleanConversionStep(ConversionStep):
         """Check if a pandas Series can be converted to boolean."""
         
         unique_values = series.dropna().unique()
-        if len(unique_values) != 2:
+        if len(unique_values) > 2:
             return False
 
-        true_values = self.config.keywords.get("boolean_true_values", ["true", "yes", "si"])
-        false_values = self.config.keywords.get("boolean_false_values", ["false", "no"])
+        true_values = self.config.keywords.get("boolean_true_values", ["true"])
+        false_values = self.config.keywords.get("boolean_false_values", ["false"])
         
         allowed_values = set(true_values + false_values)
         
@@ -31,7 +31,7 @@ class BooleanConversionStep(ConversionStep):
         map_to_bool.update({str(v).lower(): False for v in false_values})
         
         
-        for col in df.select_dtypes(include=['object', 'string']).columns:
+        for col in df.select_dtypes(include=['string']).columns:
             if self._is_potential_boolean(df[col]):
                 logger.debug(f"Converting column '{col}' to boolean.")
                 try:

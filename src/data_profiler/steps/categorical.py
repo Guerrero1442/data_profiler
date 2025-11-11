@@ -33,7 +33,7 @@ class CategoricalConversionStep(ConversionStep):
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.debug("Iniciando conversion de columnas categoricas.")
-        for col in df.select_dtypes(include=["object", "string"]).columns:
+        for col in df.select_dtypes(include=["string"]).columns:
             num_unique = df[col].nunique(dropna=True)
             total_count = len(df[col])
             cardinality = num_unique / total_count if total_count > 0 else 0

@@ -1,5 +1,6 @@
 import pandas as pd
 import pyarrow as pa
+import warnings
 from loguru import logger
 from .base import ConversionStep
 
@@ -27,7 +28,7 @@ class DateConversionStep(ConversionStep):
 
     def process(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.debug("Iniciando conversion de columnas de fecha.")
-        for col in df.select_dtypes(include=["object", "datetime64[ns]"]).columns:
+        for col in df.select_dtypes(include=["string", "datetime64[ns]"]).columns:
             
             is_date_like = False
             # Condición para identificar columnas que podrían ser fechas
@@ -42,13 +43,18 @@ class DateConversionStep(ConversionStep):
             if is_date_like or pd.api.types.is_datetime64_ns_dtype(df[col].dtype):
                 original_col = df[col].copy()
                 try:
-                    if df[col].dtype == "object":
+                    if df[col].dtype == "string":
                         mask_invalid = original_col.str.contains("0001", na=False)
                         original_col.loc[mask_invalid] = pd.NaT
 
                         # 2. Intentamos que pandas infiera el formato automáticamente.
                         #    Esto es muy potente y a menudo resuelve formatos mixtos.
-                        converted_series = pd.to_datetime(original_col, errors="coerce")
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", UserWarning)
+                            converted_series = pd.to_datetime(
+                                original_col,
+                                errors="coerce",
+                            )
                     else:
                         converted_series = original_col
 

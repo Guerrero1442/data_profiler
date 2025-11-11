@@ -52,7 +52,7 @@ boolean_false_values:
 
 def test_forced_text_conversion_based_on_keyword(detector_config: TypeDetectorConfig):
     data = {"codigo_producto": [100, 200, 300], "precio": [10.5, 20.0, 15.75]}
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     result_df = detector.run_detection()
@@ -63,7 +63,7 @@ def test_forced_text_conversion_based_on_keyword(detector_config: TypeDetectorCo
 
 def test_numeric_conversion_with_comma_decimal(detector_config: TypeDetectorConfig):
     data = {"valor_transaccion": ["1.500,75", "99,50", "1.000,00"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -76,7 +76,7 @@ def test_numeric_conversion_with_comma_decimal(detector_config: TypeDetectorConf
 
 def test_numeric_conversion_with_dot_decimal(detector_config: TypeDetectorConfig):
     data = {"valor_transaccion": ["1,500.75", "99.50", "1,000.00"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -85,11 +85,22 @@ def test_numeric_conversion_with_dot_decimal(detector_config: TypeDetectorConfig
     # Assert
     assert pd.api.types.is_float_dtype(result_df["valor_transaccion"])
     assert result_df["valor_transaccion"][0] == 1500.75
+    
+def test_ignores_numeric_conversion_with_special_characters(detector_config: TypeDetectorConfig):
+    data = {"valor_transaccion": ["1.000", "858.0000 // 12000.0000"]}
+    df = pd.DataFrame(data, dtype="string")
+    detector = TypeDetector(df, detector_config)
+
+    # Act
+    result_df = detector.run_detection()
+
+    # Assert
+    assert pd.api.types.is_string_dtype(result_df["valor_transaccion"])
 
 
 def test_numeric_conversion_to_integer(detector_config: TypeDetectorConfig):
     data = {"cantidad": [10.0, 5.0, np.nan, 20.0]}
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     result_df = detector.run_detection()
@@ -103,7 +114,7 @@ def test_categorical_conversion_for_low_cardinality(
     # Arrange
     # 3 valores únicos en 100 filas. Cardinalidad = 3/100 = 0.03 < 0.1
     data = {"estado": ["activo"] * 40 + ["inactivo"] * 35 + ["pendiente"] * 25}
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -144,7 +155,7 @@ def test_mixed_type_column_is_not_converted_to_category(
     # Arrange
     # Baja cardinalidad (2 valores únicos), pero son de tipos diferentes.
     data = {"datos_mixtos": [100, "cien", 100, "cien", 100]}
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -163,14 +174,15 @@ def test_empty_columns_are_converted_to_string(detector_config: TypeDetectorConf
     """
     # Arrange
     data = {"columna_llena": [1, 2, 3], "columna_vacia": [np.nan, None, np.nan]}
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
     result_df = detector.run_detection()
 
     # Assert
-    assert pd.api.types.is_string_dtype(result_df["columna_vacia"])
+    assert isinstance(result_df["columna_vacia"].dtype, pd.ArrowDtype)
+    assert pa.types.is_null(result_df["columna_vacia"].dtype.pyarrow_dtype)
 
 
 def test_date_conversion_with_keyword_and_format(detector_config: TypeDetectorConfig):
@@ -183,7 +195,7 @@ def test_date_conversion_with_keyword_and_format(detector_config: TypeDetectorCo
         "fecha_ingreso": ["2024-01-15", "2024-03-20", "2024-05-10"],
         "periodo": ["2025-01-15", "2025-03-20", "2025-05-10"],
     }  # 'periodo' no tiene keyword pero si formato - o /
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -205,7 +217,7 @@ def test_date_conversion_with_mixed_formats(detector_config: TypeDetectorConfig)
     """
     # Arrange
     data = {"fecha_evento": ["2024-05-10", "15/06/2024", "2024-07-20"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -229,7 +241,7 @@ def test_date_conversion_strips_time_information(detector_config: TypeDetectorCo
     """
     # Arrange
     data = {"ultimo_acceso": ["2024-01-15 10:30:00", "2024-03-20 23:59:59"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -249,7 +261,7 @@ def test_date_conversion_ignores_midnight_time(detector_config: TypeDetectorConf
     """
     # Arrange
     data = {"fecha_nacimiento": ["2024-01-15 00:00:00", "2024-03-20 00:00:00"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -266,7 +278,7 @@ def test_date_conversion_with_null_values(detector_config: TypeDetectorConfig):
     """
     # Arrange
     data = {"fecha_baja": ["2024-02-01", None, "2024-04-10", np.nan]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -289,7 +301,7 @@ def test_column_with_invalid_date_strings_remains_string(
     """
     # Arrange
     data = {"col_con_fecha_mala": ["2024-01-15", "no es una fecha", "2024-13-01"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     # Act
@@ -307,7 +319,7 @@ def test_numeric_column_with_date_keyword_in_name_is_not_converted_to_date(
     no sea convertida a fecha, aunque su nombre contenga 'fecha'.
     """
     data = {"id_lote_fecha": ["202401", "202402", "202403"]}
-    df = pd.DataFrame(data, dtype="object")
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     result_df = detector.run_detection()
@@ -319,7 +331,7 @@ def test_boolean_conversion_with_standard_values(detector_config: TypeDetectorCo
     Verifica que una columna con 'si'/'no' se convierta a booleano y conserve los nulos.
     """
     data = {"activo": ["si", "no", np.nan, "si", "no"]}
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, dtype="string")
     detector = TypeDetector(df, detector_config)
 
     result_df = detector.run_detection()
