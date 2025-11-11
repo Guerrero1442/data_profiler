@@ -14,7 +14,18 @@ from .steps import (
 
 #! utilizar pandas con pyarrow
 class TypeDetector:
+    """
+    Detects and converts data types of DataFrame columns based on a series of processing steps.
+    """
     def __init__(self, df: pd.DataFrame, config: TypeDetectorConfig):
+        """
+        Initializes the TypeDetector with a DataFrame and configuration.
+        
+        Args:
+            df (pd.DataFrame): The input DataFrame to process.
+            config (TypeDetectorConfig): Configuration for type detection.
+        
+        """
         self.df = df.copy()
         self.config = config
 
@@ -29,7 +40,12 @@ class TypeDetector:
         ]
         
     def run_detection(self) -> pd.DataFrame:
-
+        """
+        Runs the entire type detection process by executing each step in sequence.
+        
+        Returns:
+            pd.DataFrame: The DataFrame with detected and converted data types.
+        """
         df_processed = self.df
         
         for step in self.steps:
