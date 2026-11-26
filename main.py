@@ -57,6 +57,9 @@ def process_file(file_path: Path, settings: Settings):
             f"Datos cargados exitosamente desde {file_path.name} con {len(datos)} filas y {len(datos.columns)} columnas."
         )
         
+        # imprimir esquema inicial de los datos
+        logger.debug(f"Esquema inicial de los datos:\n{datos.dtypes}")
+        
         # 2. Detectar tipos de datos
         detector_config = TypeDetectorConfig.from_yaml(settings.keyword_config_path)
         detector = TypeDetector(datos, detector_config)
@@ -64,11 +67,8 @@ def process_file(file_path: Path, settings: Settings):
         df_optimizado.columns = df_optimizado.columns.str.replace('\n', ' ').str.strip()
         
         # 3. Generacion de esquema y DDL
-        dialecto_bigquery = BigQueryDialect(
-            project_id=settings.bigquery_project_id,
-            dataset_id=settings.bigquery_dataset_id
-        )
-        schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_bigquery)
+        dialecto_oracle = OracleDialect()
+        schema_gen = SchemaGenerator(df_optimizado, dialect=dialecto_oracle, config=detector_config)
         
         # Define nombres de salida dinamicos basados en el nombre del archivo de entrada
         output_base_name = file_path.stem
