@@ -29,6 +29,7 @@ def optimized_dataframe() -> pd.DataFrame:
         "cadenas_vacias": pd.Series(["", "", "", "", ""], dtype="string"),
         "boolean_col": pd.Series(["true", "false", "true", "true", "false"], dtype="string"),
         "boolean_col_obs": pd.Series(["yes", "no", "yes", "no", "yes"], dtype="string"),
+        "isValid": pd.Series(["es_valido", "no_es_valido", "es_valido", "es_valido", "no_es_valido"], dtype="string"),
     }
     
     # convertir a pyarrow
@@ -108,6 +109,7 @@ def test_generate_schema_dict_correctly_identifies_types_oracle(optimized_datafr
     assert schema["valores_nulos"]["observaciones"] == "Columna vacía."
     assert schema["codigo_fijo"]["observaciones"] == "Columna de texto forzada por palabra clave."
     assert schema["boolean_col_obs"]["observaciones"] == "Es recomendable transformar esta columna a Booleano."
+    assert schema["isValid"]["observaciones"] == "Es recomendable transformar esta columna a Booleano."
 
 def test_to_ddl_file_creates_correct_oracle_statement(optimized_dataframe: pd.DataFrame, tmp_path: Path, dialecto_oracle: OracleDialect, test_config: TypeDetectorConfig):
     """
