@@ -56,6 +56,12 @@ class NumericConversionStep(ConversionStep):
             try:
                 if df[col].dtype == "string":
                     
+                    if df[col].str.contains(r"^0[1-9]", regex=True, na=False).any():
+                        logger.debug(
+                            f"Columna '{col}' parece contener códigos con ceros a la izquierda. Se omite la conversion a 'float64[pyarrow]'."
+                        )
+                        continue
+                    
                     # si se encuentra un caracter no numerico, se registra en el log y se omite la conversion
                     if df[col].str.contains(r"[^\d,.-]").any():
                         logger.debug(

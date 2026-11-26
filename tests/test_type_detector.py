@@ -86,6 +86,17 @@ def test_numeric_conversion_with_dot_decimal(detector_config: TypeDetectorConfig
     assert pd.api.types.is_float_dtype(result_df["valor_transaccion"])
     assert result_df["valor_transaccion"][0] == 1500.75
     
+def test_ignore_numeric_conversion_startwith_zero(detector_config: TypeDetectorConfig):
+    data = {"codigo_postal": ["01234", "05678", "09012"]}
+    df = pd.DataFrame(data, dtype="string")
+    detector = TypeDetector(df, detector_config)
+
+    # Act
+    result_df = detector.run_detection()
+
+    # Assert
+    assert pd.api.types.is_string_dtype(result_df["codigo_postal"])
+    
 def test_ignores_numeric_conversion_with_special_characters(detector_config: TypeDetectorConfig):
     data = {"valor_transaccion": ["1.000", "858.0000 // 12000.0000"]}
     df = pd.DataFrame(data, dtype="string")
